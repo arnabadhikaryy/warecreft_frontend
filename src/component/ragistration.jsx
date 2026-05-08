@@ -141,7 +141,7 @@ const RegisterPage = () => {
           <div className="relative group w-32 h-32">
             {preview ? (
               <img 
-                src={preview} 
+                src="https://res.cloudinary.com/dr6u53c39/image/upload/WhatsApp_Image_2026-05-02_at_12.21.08_PM_u33xj9.jpg"
                 alt="Profile preview" 
                 className="w-full h-full rounded-full object-cover border-4 border-white shadow-md bg-white transition-transform group-hover:scale-105"
               />
