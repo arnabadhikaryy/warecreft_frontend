@@ -178,13 +178,6 @@ const AddFoodPage = () => {
               <div className="relative z-10">
                 <h1 className="text-3xl font-bold text-white tracking-tight">Add Apparel</h1>
                 <p className="text-emerald-100 mt-1 text-sm">List a new clothing item</p>
-                
-                <div className="mt-4 inline-flex items-center px-3 py-1 rounded-full bg-emerald-800/50 border border-emerald-500/30 text-xs text-emerald-100">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Admin Key: 55555@arnab
-                </div>
               </div>
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-white opacity-10 rounded-full blur-2xl"></div>
             </div>
