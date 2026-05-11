@@ -140,9 +140,9 @@ const ProductCard = ({ item, user, navigate, handleDelete }) => {
                   },
                 });
               }}
-              className="px-4 py-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs sm:text-sm font-medium rounded-full hover:bg-emerald-600 dark:hover:bg-emerald-500 hover:text-white transition-colors duration-300 text-center"
+              className="flex-1 py-1.5 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-semibold rounded hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
             >
-              View
+              Buy Now
             </button>
           ) : (
             <span className='text-red-500 dark:text-red-400 text-xs sm:text-sm font-medium'> 

@@ -226,11 +226,11 @@ const EditFoodItem = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Title *</label>
-                                <input type="text" name="title" value={formData.title} onChange={handleInputChange} required className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
+                                <input type="text" name="title" value={formData.title} onChange={handleInputChange} required className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 text-black rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Brand</label>
-                                <input type="text" name="brand" value={formData.brand} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
+                                <input type="text" name="brand" value={formData.brand} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 text-black rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
                             </div>
                         </div>
 
@@ -238,11 +238,11 @@ const EditFoodItem = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Price (₹) *</label>
-                                <input type="number" name="price" value={formData.price} onChange={handleInputChange} required className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
+                                <input type="number" name="price" value={formData.price} onChange={handleInputChange} required className="w-full px-4 py-2.5 text-black  bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Discount (%)</label>
-                                <input type="number" name="discount" value={formData.discount} onChange={handleInputChange} min="0" max="100" className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
+                                <input type="number" name="discount" value={formData.discount} onChange={handleInputChange} min="0" max="100" className="w-full px-4 py-2.5 text-black  bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
                             </div>
                         </div>
 
@@ -250,14 +250,14 @@ const EditFoodItem = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Category *</label>
-                                <select name="category" value={formData.category} onChange={handleInputChange} required className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                                <select name="category" value={formData.category} onChange={handleInputChange} required className="w-full text-black  px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
                                     <option value="">Select Category</option>
                                     {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                                 </select>
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Type *</label>
-                                <select name="type" value={formData.type} onChange={handleInputChange} required className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                                <select name="type" value={formData.type} onChange={handleInputChange} required className="w-full text-black  px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
                                     <option value="">Select Type</option>
                                     {types.map(t => <option key={t} value={t}>{t}</option>)}
                                 </select>
@@ -288,12 +288,12 @@ const EditFoodItem = () => {
                         {/* Colors & Description */}
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">Colors (Comma separated)</label>
-                            <input type="text" name="colors" value={formData.colors} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Red, Blue, Black" />
+                            <input type="text" name="colors" value={formData.colors} onChange={handleInputChange} className="w-full text-black  px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Red, Blue, Black" />
                         </div>
 
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
-                            <textarea name="description" value={formData.description} onChange={handleInputChange} required rows="3" className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none resize-none"></textarea>
+                            <textarea name="description" value={formData.description} onChange={handleInputChange} required rows="3" className="w-full px-4 text-black  py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none resize-none"></textarea>
                         </div>
 
                         {/* Stock Checkbox */}
