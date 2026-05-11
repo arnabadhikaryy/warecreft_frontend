@@ -16,6 +16,11 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
     </svg>
   ),
+  ChevronUp: ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+    </svg>
+  ),
   ShoppingBag: ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
@@ -41,11 +46,17 @@ const Icons = {
     <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
     </svg>
+  ),
+  Clock: ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
   )
 };
 
 const UsersWithOrdersPage = () => {
   const [users, setUsers] = useState([]);
+  const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedUserId, setExpandedUserId] = useState(null);
@@ -70,7 +81,8 @@ const UsersWithOrdersPage = () => {
         );
 
         if (response.data.status) {
-          setUsers(response.data.message || []);
+          setUsers(response.data.users || []);
+          setStatistics(response.data.statistics || null);
         } else {
           setError(response.data.message || 'Failed to fetch users');
         }
@@ -102,19 +114,18 @@ const UsersWithOrdersPage = () => {
       if (response.data.success) {
         toast.success('Order removed successfully');
         
-        setUsers(prevUsers => prevUsers.map(user => {
-          if (user._id === userId) {
-            const updatedOrders = [...user.orders];
-            const indexToRemove = updatedOrders.findIndex(order => order._id === orderId);
-            
-            if (indexToRemove !== -1) {
-              updatedOrders.splice(indexToRemove, 1);
+        // Update local state
+        setUsers(prevUsers => {
+          const updatedUsers = prevUsers.map(user => {
+            if (user._id === userId) {
+              const updatedOrders = user.orders.filter(order => order._id !== orderId);
+              return { ...user, orders: updatedOrders, totalOrders: updatedOrders.length };
             }
-            
-            return { ...user, orders: updatedOrders };
-          }
-          return user;
-        }));
+            return user;
+          }).filter(user => user.orders.length > 0); // Remove users with no orders
+          
+          return updatedUsers;
+        });
       } else {
         toast.error('Failed to remove order');
       }
@@ -123,18 +134,29 @@ const UsersWithOrdersPage = () => {
     }
   };
 
-  const stats = useMemo(() => {
-    const totalUsers = users.length;
-    const totalOrders = users.reduce((acc, user) => acc + (user.orders?.length || 0), 0);
-    const totalRevenue = users.reduce((acc, user) => {
-        const userTotal = user.orders?.reduce((sum, order) => sum + (Number(order.price) || 0), 0) || 0;
-        return acc + userTotal;
-    }, 0);
-    return { totalUsers, totalOrders, totalRevenue };
-  }, [users]);
+  // Get status color
+  const getStatusColor = (status) => {
+    switch(status?.toLowerCase()) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'shipped': return 'bg-purple-100 text-purple-800';
+      case 'delivered': return 'bg-green-100 text-green-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
 
-  const getUserTotal = (orders) => {
-    return orders.reduce((sum, order) => sum + (Number(order.price) || 0), 0);
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Date not available';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   const toggleExpand = (id) => {
@@ -145,7 +167,7 @@ const UsersWithOrdersPage = () => {
   if (error) return <ErrorState error={error} />;
 
   return (
-    <div className="w-screen bg-slate-50 flex flex-col font-sans text-slate-800">
+    <div className="min-h-screen w-screen bg-slate-50 flex flex-col font-sans text-slate-800">
       <Navbar />
       <Toaster position="top-center" toastOptions={{ duration: 3000, style: { background: '#333', color: '#fff' } }} />
       
@@ -161,23 +183,46 @@ const UsersWithOrdersPage = () => {
               >
                 Order Management
               </motion.h1>
-              <p className="text-slate-500 mt-1">Overview of all active users and their current orders.</p>
+              <p className="text-slate-500 mt-1">Overview of all customers and their orders</p>
             </div>
           </div>
 
+          {/* Statistics Cards */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6"
+            className="grid grid-cols-1 md:grid-cols-4 gap-6"
           >
-            <StatCard label="Total Clients" value={stats.totalUsers} color="bg-blue-500" icon={<Icons.Phone className="w-6 h-6 text-white" />} />
-            <StatCard label="Active Orders" value={stats.totalOrders} color="bg-indigo-500" icon={<Icons.ShoppingBag className="w-6 h-6 text-white" />} />
-            <StatCard label="Total Revenue (Est)" value={`₹${stats.totalRevenue.toLocaleString()}`} color="bg-emerald-500" icon={<Icons.Currency className="w-6 h-6 text-white" />} />
+            <StatCard 
+              label="Total Customers" 
+              value={statistics?.totalUsers || 0} 
+              color="bg-blue-500" 
+              icon={<Icons.Phone className="w-6 h-6 text-white" />} 
+            />
+            <StatCard 
+              label="Total Orders" 
+              value={statistics?.totalOrders || 0} 
+              color="bg-indigo-500" 
+              icon={<Icons.ShoppingBag className="w-6 h-6 text-white" />} 
+            />
+            <StatCard 
+              label="Total Revenue" 
+              value={`₹${(statistics?.totalRevenue || 0).toLocaleString()}`} 
+              color="bg-emerald-500" 
+              icon={<Icons.Currency className="w-6 h-6 text-white" />} 
+            />
+            <StatCard 
+              label="Avg Order Value" 
+              value={`₹${(statistics?.averageOrderValue || 0).toLocaleString()}`} 
+              color="bg-purple-500" 
+              icon={<Icons.Currency className="w-6 h-6 text-white" />} 
+            />
           </motion.div>
 
+          {/* Users List */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-6 border-b border-slate-100 bg-white">
-              <h2 className="text-lg font-semibold text-slate-800">Client List</h2>
+              <h2 className="text-lg font-semibold text-slate-800">Customer Orders</h2>
             </div>
             
             {users.length === 0 ? (
@@ -191,8 +236,9 @@ const UsersWithOrdersPage = () => {
                     index={index} 
                     isExpanded={expandedUserId === (user._id || index)}
                     onToggle={() => toggleExpand(user._id || index)}
-                    userTotal={getUserTotal(user.orders)}
                     onRemoveOrder={handleRemoveOrder}
+                    getStatusColor={getStatusColor}
+                    formatDate={formatDate}
                   />
                 ))}
               </div>
@@ -217,15 +263,7 @@ const StatCard = ({ label, value, color, icon }) => (
   </div>
 );
 
-const UserRow = ({ user, isExpanded, onToggle, userTotal, onRemoveOrder }) => {
-  
-  // Sorting the orders by _id to group identical items together
-  const groupedOrders = [...user.orders].sort((a, b) => {
-    const idA = a._id || '';
-    const idB = b._id || '';
-    return idA.localeCompare(idB);
-  });
-
+const UserRow = ({ user, isExpanded, onToggle, onRemoveOrder, getStatusColor, formatDate }) => {
   return (
     <div className="group transition-colors hover:bg-slate-50">
       <div 
@@ -235,9 +273,12 @@ const UserRow = ({ user, isExpanded, onToggle, userTotal, onRemoveOrder }) => {
         <div className="flex items-center space-x-4">
           <div className="relative">
             <img 
-              src={user.imageURL || `https://ui-avatars.com/api/?name=${user.name}&background=random`} 
+              src={user.imageURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`} 
               alt={user.name} 
               className="h-12 w-12 rounded-full object-cover border-2 border-white shadow-sm"
+              onError={(e) => {
+                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`;
+              }}
             />
             <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white bg-green-400"></span>
           </div>
@@ -248,27 +289,27 @@ const UserRow = ({ user, isExpanded, onToggle, userTotal, onRemoveOrder }) => {
             <div className="flex flex-col sm:flex-row sm:items-center text-sm text-slate-500 gap-y-1 gap-x-3">
               <span className="flex items-center"><Icons.Phone className="w-3 h-3 mr-1" /> {user.phone_number}</span>
               <span className="hidden sm:inline">•</span>
-              <span className="flex items-center"><Icons.MapPin className="w-3 h-3 mr-1" /> {user.address || 'No address'}</span>
+              <span className="flex items-center"><Icons.MapPin className="w-3 h-3 mr-1" /> {user.address?.substring(0, 50) || 'No address'}</span>
             </div>
           </div>
         </div>
 
         <div className="flex items-center justify-between sm:justify-end gap-6 min-w-[200px]">
-           <div className="text-right">
-             <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Orders</p>
-             <div className="flex items-center justify-end space-x-2">
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                    {user.orders.length} Items
-                </span>
-                <span className="font-semibold text-slate-700">₹{userTotal.toLocaleString()}</span>
-             </div>
-           </div>
-           <motion.div 
-             animate={{ rotate: isExpanded ? 180 : 0 }}
-             transition={{ duration: 0.2 }}
-           >
-             <Icons.ChevronDown className="w-5 h-5 text-slate-400" />
-           </motion.div>
+          <div className="text-right">
+            <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Orders / Total</p>
+            <div className="flex items-center justify-end space-x-2">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                {user.totalOrders || user.orders?.length || 0} Items
+              </span>
+              <span className="font-semibold text-slate-700">₹{(user.totalSpent || 0).toLocaleString()}</span>
+            </div>
+          </div>
+          <motion.div 
+            animate={{ rotate: isExpanded ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Icons.ChevronDown className="w-5 h-5 text-slate-400" />
+          </motion.div>
         </div>
       </div>
 
@@ -284,12 +325,14 @@ const UserRow = ({ user, isExpanded, onToggle, userTotal, onRemoveOrder }) => {
             <div className="p-5 sm:p-8">
               <h4 className="text-sm font-semibold text-slate-500 mb-4 uppercase tracking-wider">Order Details</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {groupedOrders.map((order, idx) => (
+                {user.orders?.map((order, idx) => (
                   <OrderCard 
-                    key={order._id ? `${order._id}-${idx}` : idx} 
+                    key={order._id || idx} 
                     order={order} 
                     userId={user._id}
                     onRemove={onRemoveOrder}
+                    getStatusColor={getStatusColor}
+                    formatDate={formatDate}
                   />
                 ))}
               </div>
@@ -301,64 +344,105 @@ const UserRow = ({ user, isExpanded, onToggle, userTotal, onRemoveOrder }) => {
   );
 };
 
-const OrderCard = ({ order, userId, onRemove }) => (
-  <motion.div 
-    whileHover={{ y: -4 }}
-    className="bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200 flex flex-col group"
-  >
-    <div className="relative h-48 overflow-hidden bg-gray-100">
-      <img
-        src={order.pic_url || "https://placehold.co/400x300?text=No+Image"}
-        alt={order.title}
-        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-      />
-      <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-white text-xs px-2 py-1 rounded flex gap-2">
-         #{order._id?.slice(-4)}
-      </div>
-    </div>
-    <div className="p-4 flex-grow flex flex-col justify-between">
-      <div>
-        <h5 className="font-semibold text-slate-900 mb-1 line-clamp-1">{order.title}</h5>
-        <p className="text-xs text-slate-500 mb-3 font-mono break-all">ID: {order._id}</p>
-      </div>
-      <div className="flex items-center justify-between pt-3 border-t border-slate-50">
-        <span className="text-lg font-bold text-slate-800">₹{order.price}</span>
-        
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">
-              Confirmed
+const OrderCard = ({ order, userId, onRemove, getStatusColor, formatDate }) => {
+  const foodItem = order.foodItem || {};
+  const quantity = order.quantity || 1;
+  const priceAtPurchase = order.priceAtPurchase || foodItem.price || 0;
+  const totalAmount = priceAtPurchase * quantity;
+  const productImage = foodItem.images?.[0] || "https://placehold.co/400x300?text=No+Image";
+
+  return (
+    <motion.div 
+      whileHover={{ y: -4 }}
+      className="bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200 flex flex-col group"
+    >
+      <div className="relative h-48 overflow-hidden bg-gray-100">
+        <img
+          src={productImage}
+          alt={foodItem.title || 'Product'}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          onError={(e) => {
+            e.target.src = "https://placehold.co/400x300?text=No+Image";
+          }}
+        />
+        <div className="absolute top-2 left-2">
+          <span className={`text-xs font-bold px-2 py-1 rounded-md ${getStatusColor(order.status)}`}>
+            {order.status || 'Pending'}
           </span>
+        </div>
+        {quantity > 1 && (
+          <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-md text-white text-xs px-2 py-1 rounded">
+            {quantity} items
+          </div>
+        )}
+      </div>
+      
+      <div className="p-4 flex-grow flex flex-col justify-between">
+        <div>
+          <h5 className="font-semibold text-slate-900 mb-1 line-clamp-1">
+            {foodItem.title || 'Product'}
+          </h5>
+          <p className="text-xs text-slate-500 mb-2 font-mono">
+            Order ID: {order._id?.slice(-8)}
+          </p>
+          {order.orderDate && (
+            <p className="text-xs text-slate-400 mb-3 flex items-center gap-1">
+              <Icons.Clock className="w-3 h-3" />
+              {formatDate(order.orderDate)}
+            </p>
+          )}
+        </div>
+        
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">Quantity:</span>
+            <span className="font-medium">{quantity}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">Price each:</span>
+            <span className="font-medium">₹{priceAtPurchase}</span>
+          </div>
+          <div className="flex justify-between text-sm border-t border-slate-100 pt-2">
+            <span className="font-semibold text-slate-700">Total:</span>
+            <span className="font-bold text-slate-900">₹{totalAmount}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100">
           <button 
             onClick={() => onRemove(userId, order._id)}
-            className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+            className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors flex items-center gap-1 text-sm"
             title="Delete Order"
           >
             <Icons.Trash className="w-4 h-4" />
+            Remove
           </button>
+          <div className="text-xs text-slate-400">
+            {foodItem.category || 'General'}
+          </div>
         </div>
-
       </div>
-    </div>
-  </motion.div>
-);
+    </motion.div>
+  );
+};
 
 const EmptyState = () => (
   <div className="text-center py-20">
     <div className="bg-slate-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
       <Icons.ShoppingBag className="w-10 h-10 text-slate-300" />
     </div>
-    <h3 className="text-lg font-medium text-slate-900">No active orders found</h3>
+    <h3 className="text-lg font-medium text-slate-900">No orders found</h3>
     <p className="text-slate-500 mt-1 max-w-sm mx-auto">
-      Users who place orders will appear here. Currently, the database returns an empty list.
+      No customers have placed orders yet. Orders will appear here once customers make purchases.
     </p>
   </div>
 );
 
 const LoadingState = () => (
-  <div className="h-full w-screen bg-slate-50 flex items-center justify-center">
+  <div className="min-h-screen w-screen bg-slate-50 flex items-center justify-center">
     <div className="flex flex-col items-center">
-        <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-        <p className="text-slate-500 font-medium animate-pulse">Loading orders...</p>
+      <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+      <p className="text-slate-500 font-medium animate-pulse">Loading customer orders...</p>
     </div>
   </div>
 );
@@ -367,9 +451,11 @@ const ErrorState = ({ error }) => (
   <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
     <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full text-center border border-red-100">
       <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
       </div>
-      <h3 className="text-xl font-bold text-slate-900 mb-2">Something went wrong</h3>
+      <h3 className="text-xl font-bold text-slate-900 mb-2">Failed to load data</h3>
       <p className="text-slate-500 mb-6">{error}</p>
       <button onClick={() => window.location.reload()} className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
         Try Again

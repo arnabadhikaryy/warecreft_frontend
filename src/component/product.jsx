@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { getCookie } from '../middelwaie/cookie';
-import { jwtDecode } from 'jwt-decode'; 
+import { jwtDecode } from 'jwt-decode';
 import toast, { Toaster } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import Footer from './futer';
@@ -12,42 +12,42 @@ import backend_Url from '../backend_url_return_function/backendUrl';
 function Product() {
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   // Safe destructuring with all the new apparel fields
-  const { 
-    id, 
-    images, 
+  const {
+    id,
+    images,
     url, // Fallback for old data
-    title, 
-    price, 
-    originalPrice, 
-    discount, 
+    title,
+    price,
+    originalPrice,
+    discount,
     description,
     brand,
     sizes = [],
     colors = []
   } = location.state || {};
-  
+
   // Create a normalized image array (fallback to url if images array is missing)
   const imageList = images && images.length > 0 ? images : (url ? [url] : ['https://via.placeholder.com/600x800?text=No+Image']);
-  
+
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
-  
+
   const [userPhone, setUserPhone] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingCod, setLoadingCod] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [userToken, setUserToken] = useState('');
-  
+
   // State for confirmation modal
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   useEffect(() => {
     // If no state exists (user navigated directly to URL), redirect back
     if (!location.state) {
-      navigate('/'); 
+      navigate('/');
       return;
     }
 
@@ -56,7 +56,7 @@ function Product() {
       try {
         setUserToken(token);
         const decoded = jwtDecode(token);
-        
+
         if (decoded && decoded.phone) {
           setUserPhone(decoded.phone);
         } else {
@@ -93,7 +93,7 @@ function Product() {
       navigate('/login');
       return;
     }
-    
+
     if (!validateSelection()) return;
 
     setLoading(true);
@@ -101,16 +101,16 @@ function Product() {
       const response = await axios.post(
         `${backend_Url}/api/v1/orders/payment`,
         {
-            name: title,
-            amount: price * quantity,
-            FOODorderID: id,
-            token: userToken 
-            // Note: You can add size/color to this payload later if your backend supports it
+          name: title,
+          amount: price * quantity,
+          FOODorderID: id,
+          token: userToken
+          // Note: You can add size/color to this payload later if your backend supports it
         }
       );
 
       if (response.data.url) {
-        window.location.href = response.data.url;   
+        window.location.href = response.data.url;
       } else {
         toast.error(response.data.message || 'Failed to place order');
         setLoading(false);
@@ -131,8 +131,8 @@ function Product() {
   };
 
   const handleCashOnDelivery = async () => {
-    setShowConfirmModal(false); 
-    
+    setShowConfirmModal(false);
+
     if (!userPhone) {
       toast.error('Please login to place an order');
       navigate('/login');
@@ -146,8 +146,11 @@ function Product() {
         {
           token: userToken,
           orderID: id,
-          after_discount_final_price: price
-          // Note: Add selectedSize and selectedColor here if your backend schema for Orders accepts it!
+          after_discount_final_price: price,
+          quantity: quantity,  // ← ADD THIS: Send the quantity to backend
+          // Also send size and color if your schema supports it
+          selectedSize: selectedSize,
+          selectedColor: selectedColor
         }
       );
 
@@ -172,13 +175,13 @@ function Product() {
     }
   };
 
-  if (!location.state) return null; 
+  if (!location.state) return null;
 
   return (
     <div className="min-h-screen w-screen bg-white flex flex-col relative font-sans">
       <Navbar />
       <Toaster position="top-right" />
-      
+
       {/* --- Confirmation Modal --- */}
       <AnimatePresence>
         {showConfirmModal && (
@@ -193,7 +196,7 @@ function Product() {
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2">Confirm Order</h3>
-              
+
               <div className="bg-gray-50 p-4 rounded-xl mb-6 text-sm text-gray-700">
                 <p className="font-semibold text-base mb-1">{quantity}x {title}</p>
                 {selectedSize && <p>Size: <span className="font-medium">{selectedSize}</span></p>}
@@ -203,7 +206,7 @@ function Product() {
                   <span className="text-emerald-600">₹{price * quantity}</span>
                 </div>
               </div>
-              
+
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowConfirmModal(false)}
@@ -223,7 +226,7 @@ function Product() {
         )}
       </AnimatePresence>
 
-     <div className="flex-grow flex justify-center py-8 px-4 sm:px-6 lg:px-8">
+      <div className="flex-grow flex justify-center py-8 px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -232,47 +235,47 @@ function Product() {
         >
           {/* Main Grid Layout for E-commerce */}
           <div className="lg:grid lg:grid-cols-2 lg:gap-12">
-            
+
             {/* LEFT: Image Gallery Section */}
             <div className="flex flex-col gap-4">
-               {/* Main Display Image */}
-               <div className="relative aspect-[3/4] lg:aspect-[4/5] w-full rounded-2xl bg-gray-100 overflow-hidden border border-gray-100">
-                 <AnimatePresence mode="wait">
-                    <motion.img
-                      key={currentImageIndex}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="absolute inset-0 w-full h-full object-cover"
-                      src={imageList[currentImageIndex]}
-                      alt={`${title} - view ${currentImageIndex + 1}`}
-                    />
-                 </AnimatePresence>
-               </div>
+              {/* Main Display Image */}
+              <div className="relative aspect-[3/4] lg:aspect-[4/5] w-full rounded-2xl bg-gray-100 overflow-hidden border border-gray-100">
+                <AnimatePresence mode="wait">
+                  <motion.img
+                    key={currentImageIndex}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    src={imageList[currentImageIndex]}
+                    alt={`${title} - view ${currentImageIndex + 1}`}
+                  />
+                </AnimatePresence>
+              </div>
 
-               {/* Thumbnails Row */}
-               {imageList.length > 1 && (
-                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                   {imageList.map((imgSrc, idx) => (
-                     <button
-                       key={idx}
-                       onClick={() => setCurrentImageIndex(idx)}
-                       className={`relative flex-shrink-0 w-20 h-24 sm:w-24 sm:h-32 rounded-xl overflow-hidden border-2 transition-all duration-200
+              {/* Thumbnails Row */}
+              {imageList.length > 1 && (
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                  {imageList.map((imgSrc, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentImageIndex(idx)}
+                      className={`relative flex-shrink-0 w-20 h-24 sm:w-24 sm:h-32 rounded-xl overflow-hidden border-2 transition-all duration-200
                          ${currentImageIndex === idx ? 'border-emerald-500 shadow-md' : 'border-transparent hover:border-gray-300'}
                        `}
-                     >
-                       <img src={imgSrc} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
-                       {currentImageIndex !== idx && <div className="absolute inset-0 bg-white/40"></div>}
-                     </button>
-                   ))}
-                 </div>
-               )}
+                    >
+                      <img src={imgSrc} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
+                      {currentImageIndex !== idx && <div className="absolute inset-0 bg-white/40"></div>}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* RIGHT: Product Details Section */}
             <div className="py-6 lg:py-0 flex flex-col">
-              
+
               {/* Brand & Badges */}
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-bold text-gray-400 tracking-widest uppercase">
@@ -287,7 +290,7 @@ function Product() {
               <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight mb-4 leading-tight">
                 {title}
               </h1>
-              
+
               {/* Pricing */}
               <div className="mb-6 flex flex-col gap-1">
                 {discount && discount > 0 ? (
@@ -327,8 +330,8 @@ function Product() {
                         key={idx}
                         onClick={() => setSelectedSize(size)}
                         className={`w-14 h-14 flex items-center justify-center rounded-xl border-2 text-sm font-bold transition-all
-                          ${selectedSize === size 
-                            ? 'border-emerald-600 bg-emerald-600 text-white shadow-md shadow-emerald-200' 
+                          ${selectedSize === size
+                            ? 'border-emerald-600 bg-emerald-600 text-white shadow-md shadow-emerald-200'
                             : 'border-gray-200 text-gray-600 hover:border-gray-400 bg-white'
                           }`}
                       >
@@ -349,8 +352,8 @@ function Product() {
                         key={idx}
                         onClick={() => setSelectedColor(color)}
                         className={`px-5 py-2.5 rounded-full border-2 text-sm font-bold capitalize transition-all
-                          ${selectedColor === color 
-                            ? 'border-gray-900 bg-gray-900 text-white' 
+                          ${selectedColor === color
+                            ? 'border-gray-900 bg-gray-900 text-white'
                             : 'border-gray-200 text-gray-600 hover:border-gray-400 bg-white'
                           }`}
                       >
@@ -374,28 +377,31 @@ function Product() {
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Quantity</label>
                   <div className="flex items-center bg-white rounded-xl border border-gray-200 w-fit shadow-sm">
+
                     <button
-                      onClick={()=>{
-                        alert('Testing state: please order repeatedly if you want multiple items. Thank you!')
-                      }}
+                      onClick={() => handleQuantityChange(-1)}  // ← FIX THIS
                       className="p-3 text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-30"
                       disabled={quantity <= 1 || loading || loadingCod}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4"></path></svg>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4"></path>
+                      </svg>
                     </button>
-                    <span className="w-10 text-center font-bold text-gray-900 text-lg select-none">{quantity}</span>
+
                     <button
-                      onClick={()=>{
-                        alert('Testing state: please order repeatedly if you want multiple items. Thank you!')
-                      }}
+                      onClick={() => handleQuantityChange(1)}  // ← FIX THIS
                       className="p-3 text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-30"
                       disabled={quantity >= 10 || loading || loadingCod}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
+                      </svg>
                     </button>
+                    <span className="w-10 text-center font-bold text-gray-900 text-lg select-none">{quantity}</span>
+
                   </div>
                 </div>
-                
+
                 <div className="text-left sm:text-right">
                   <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wide">Subtotal</p>
                   <p className="text-2xl font-black text-gray-900">₹{price * quantity}</p>
@@ -418,8 +424,8 @@ function Product() {
                   onClick={openConfirmation}
                   disabled={loading || loadingCod}
                   className={`w-full py-4 px-6 rounded-xl text-base font-bold shadow-lg transition-all 
-                    ${loading || loadingCod 
-                      ? 'bg-emerald-400 cursor-not-allowed text-white shadow-none' 
+                    ${loading || loadingCod
+                      ? 'bg-emerald-400 cursor-not-allowed text-white shadow-none'
                       : 'bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-emerald-200'
                     }`}
                 >
@@ -432,11 +438,11 @@ function Product() {
                       <span>Processing...</span>
                     </div>
                   ) : (
-                    <span className=' text-black'>Add to Cart & Order (Cash on Delivery)</span>
+                    <span className=' text-black'>Place Order (Cash on Delivery)</span>
                   )}
                 </motion.button>
               </div>
-              
+
             </div>
           </div>
         </motion.div>
