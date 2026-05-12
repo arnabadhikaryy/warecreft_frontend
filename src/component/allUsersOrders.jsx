@@ -51,8 +51,15 @@ const Icons = {
     <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
+  ),
+  Edit: ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+    </svg>
   )
 };
+
+const ORDER_STATUSES = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
 
 const UsersWithOrdersPage = () => {
   const [users, setUsers] = useState([]);
@@ -60,6 +67,7 @@ const UsersWithOrdersPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedUserId, setExpandedUserId] = useState(null);
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -114,7 +122,6 @@ const UsersWithOrdersPage = () => {
       if (response.data.success) {
         toast.success('Order removed successfully');
         
-        // Update local state
         setUsers(prevUsers => {
           const updatedUsers = prevUsers.map(user => {
             if (user._id === userId) {
@@ -122,7 +129,7 @@ const UsersWithOrdersPage = () => {
               return { ...user, orders: updatedOrders, totalOrders: updatedOrders.length };
             }
             return user;
-          }).filter(user => user.orders.length > 0); // Remove users with no orders
+          }).filter(user => user.orders.length > 0);
           
           return updatedUsers;
         });
@@ -131,6 +138,54 @@ const UsersWithOrdersPage = () => {
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Error removing order');
+    }
+  };
+
+  const handleUpdateOrderStatus = async (userId, orderId, newStatus) => {
+    const token = getCookie('authToken');
+    if (!token) {
+      toast.error('Authentication token missing');
+      return;
+    }
+
+    setUpdatingOrderId(orderId);
+
+    try {
+      const response = await axios.post(
+        `${backend_Url}/production/updateOrderStatus`,
+        {
+          token: token,
+          userId: userId,
+          orderId: orderId,
+          status: newStatus
+        }
+      );
+
+      if (response.data.success || response.data.status) {
+        toast.success(`Order status updated to ${newStatus}`);
+        
+        // Update local state
+        setUsers(prevUsers => {
+          return prevUsers.map(user => {
+            if (user._id === userId) {
+              const updatedOrders = user.orders.map(order => {
+                if (order._id === orderId) {
+                  return { ...order, status: newStatus };
+                }
+                return order;
+              });
+              return { ...user, orders: updatedOrders };
+            }
+            return user;
+          });
+        });
+      } else {
+        toast.error(response.data.message || 'Failed to update order status');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error updating order status');
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 
@@ -237,8 +292,10 @@ const UsersWithOrdersPage = () => {
                     isExpanded={expandedUserId === (user._id || index)}
                     onToggle={() => toggleExpand(user._id || index)}
                     onRemoveOrder={handleRemoveOrder}
+                    onUpdateOrderStatus={handleUpdateOrderStatus}
                     getStatusColor={getStatusColor}
                     formatDate={formatDate}
+                    updatingOrderId={updatingOrderId}
                   />
                 ))}
               </div>
@@ -263,7 +320,7 @@ const StatCard = ({ label, value, color, icon }) => (
   </div>
 );
 
-const UserRow = ({ user, isExpanded, onToggle, onRemoveOrder, getStatusColor, formatDate }) => {
+const UserRow = ({ user, isExpanded, onToggle, onRemoveOrder, onUpdateOrderStatus, getStatusColor, formatDate, updatingOrderId }) => {
   return (
     <div className="group transition-colors hover:bg-slate-50">
       <div 
@@ -331,8 +388,10 @@ const UserRow = ({ user, isExpanded, onToggle, onRemoveOrder, getStatusColor, fo
                     order={order} 
                     userId={user._id}
                     onRemove={onRemoveOrder}
+                    onUpdateStatus={onUpdateOrderStatus}
                     getStatusColor={getStatusColor}
                     formatDate={formatDate}
+                    isUpdating={updatingOrderId === order._id}
                   />
                 ))}
               </div>
@@ -344,34 +403,103 @@ const UserRow = ({ user, isExpanded, onToggle, onRemoveOrder, getStatusColor, fo
   );
 };
 
-const OrderCard = ({ order, userId, onRemove, getStatusColor, formatDate }) => {
+const OrderCard = ({ order, userId, onRemove, onUpdateStatus, getStatusColor, formatDate, isUpdating }) => {
   const foodItem = order.foodItem || {};
   const quantity = order.quantity || 1;
   const priceAtPurchase = order.priceAtPurchase || foodItem.price || 0;
   const totalAmount = priceAtPurchase * quantity;
   const productImage = foodItem.images?.[0] || "https://placehold.co/400x300?text=No+Image";
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
-  return (
+  const handleStatusChange = (newStatus) => {
+    onUpdateStatus(userId, order._id, newStatus);
+    setIsStatusDropdownOpen(false);
+  };
+
+return (
     <motion.div 
       whileHover={{ y: -4 }}
-      className="bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200 flex flex-col group"
+      // FIX 1: Removed overflow-hidden from the outer container so the dropdown can break out
+      className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col group"
     >
-      <div className="relative h-48 overflow-hidden bg-gray-100">
-        <img
-          src={productImage}
-          alt={foodItem.title || 'Product'}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-          onError={(e) => {
-            e.target.src = "https://placehold.co/400x300?text=No+Image";
-          }}
-        />
-        <div className="absolute top-2 left-2">
-          <span className={`text-xs font-bold px-2 py-1 rounded-md ${getStatusColor(order.status)}`}>
-            {order.status || 'Pending'}
-          </span>
+      {/* FIX 2: Added rounded-t-xl to keep the card's top corners rounded */}
+      <div className="relative h-48 bg-gray-100 rounded-t-xl">
+        
+        {/* FIX 3: Isolated the overflow-hidden strictly to the image so the zoom effect works without clipping the dropdown */}
+        <div className="absolute inset-0 overflow-hidden rounded-t-xl">
+          <img
+            src={productImage}
+            alt={foodItem.title || 'Product'}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            onError={(e) => {
+              e.target.src = "https://placehold.co/400x300?text=No+Image";
+            }}
+          />
         </div>
+
+        {/* FIX 4: The dropdown container now sits independently on top (z-50) */}
+        <div className="absolute top-2 left-2 z-50">
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsStatusDropdownOpen(!isStatusDropdownOpen);
+              }}
+              disabled={isUpdating}
+              className={`text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1 transition-all ${
+                getStatusColor(order.status)
+              } ${isUpdating ? 'opacity-50 cursor-wait' : 'hover:shadow-md cursor-pointer'}`}
+            >
+              {isUpdating ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                  Updating...
+                </>
+              ) : (
+                <>
+                  {order.status || 'Pending'}
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </>
+              )}
+            </button>
+            
+            {isStatusDropdownOpen && !isUpdating && (
+              <div className="absolute top-full left-0 mt-1 w-36 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden">
+                {ORDER_STATUSES.map((status) => (
+                  <button
+                    key={status}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStatusChange(status);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors hover:bg-indigo-50 flex items-center gap-2 ${
+                      order.status === status ? 'bg-indigo-50 text-indigo-600' : 'text-slate-700'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${
+                      status === 'Pending' ? 'bg-yellow-400' :
+                      status === 'Processing' ? 'bg-blue-400' :
+                      status === 'Shipped' ? 'bg-purple-400' :
+                      status === 'Delivered' ? 'bg-green-400' :
+                      'bg-red-400'
+                    }`}></span>
+                    {status}
+                    {order.status === status && (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         {quantity > 1 && (
-          <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-md text-white text-xs px-2 py-1 rounded">
+          <div className="absolute top-2 right-2 z-10 bg-black/70 backdrop-blur-md text-white text-xs px-2 py-1 rounded">
             {quantity} items
           </div>
         )}

@@ -10,25 +10,67 @@ import { jwtDecode } from 'jwt-decode';
 import { adminphone, backend_Url } from '../backend_url_return_function/backendUrl';
 
 // --- NEW: Extracted Product Card Component ---
-// This allows each card to manage its own 10-second image timer independently.
 const ProductCard = ({ item, user, navigate, handleDelete }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // NEW: Add local state to manage likes instantly (Optimistic UI Update)
+  const [likeCount, setLikeCount] = useState(item.likes || 0);
+  const [isLiked, setIsLiked] = useState(false); // See note below about initial state
 
-  // Normalize image array (fallback to pic_url or placeholder if missing)
+  // Normalize image array
   const imageList = item.images && item.images.length > 0 
     ? item.images 
     : (item.pic_url ? [item.pic_url] : ['https://via.placeholder.com/400x500?text=No+Image']);
 
-  // Timer to change image every 10 seconds if multiple exist
+  // Timer to change image every 5 seconds if multiple exist
   useEffect(() => {
     let timer;
     if (imageList.length > 1) {
       timer = setInterval(() => {
         setCurrentImageIndex((prev) => (prev + 1) % imageList.length);
-      }, 5000); // 10000ms = 10 seconds
+      }, 5000); 
     }
     return () => clearInterval(timer);
   }, [imageList.length]);
+
+  // NEW: Function to handle the like toggle
+  const handleLikeToggle = async (e) => {
+    e.stopPropagation(); // Prevents triggering other click events on the card
+    
+    const token = getCookie('authToken');
+    if (!token) {
+      toast.error("Please log in to like products!");
+      return;
+    }
+
+    // 1. Optimistic Update (Change UI instantly before API call finishes)
+    setIsLiked(!isLiked);
+    setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
+
+    try {
+      // 2. Call the backend
+      const response = await axios.post(`${backend_Url}/production/toggleLikeProduct`, {
+        productId: item._id,
+        token: token
+      });
+
+      if (response.data.success) {
+        // Sync absolute truth from backend just to be safe
+        setIsLiked(response.data.isLiked);
+      } else {
+        // If it failed on the backend logic, revert UI
+        setIsLiked(!isLiked);
+        setLikeCount(prev => isLiked ? prev + 1 : prev - 1);
+        toast.error(response.data.message || "Failed to update like.");
+      }
+    } catch (error) {
+      // If API fails completely, revert UI
+      setIsLiked(!isLiked);
+      setLikeCount(prev => isLiked ? prev + 1 : prev - 1);
+      console.error("Error toggling like:", error);
+      toast.error("Something went wrong!");
+    }
+  };
 
   const hasDiscount = item.discount && item.discount > 0;
   const finalPrice = hasDiscount 
@@ -46,18 +88,32 @@ const ProductCard = ({ item, user, navigate, handleDelete }) => {
               {item.discount}% OFF
           </div>
       )}
-      <div className="absolute top-2 right-2 z-10 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm text-red-500 text-[10px] font-bold px-2 py-1 rounded-full shadow flex items-center gap-1">
-          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-          </svg>
-          {item.likes || 0}
-      </div>
+
+      {/* UPDATED: Changed from a static div to a clickable button for likes */}
+      <button 
+        onClick={handleLikeToggle}
+        className={`absolute top-2 right-2 z-10 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm text-[10px] font-bold px-2 py-1 rounded-full shadow flex items-center gap-1 transition-colors duration-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${
+          isLiked ? 'text-red-500' : 'text-gray-400 hover:text-red-500'
+        }`}
+      >
+        <svg 
+          className={`w-4 h-4 transition-transform duration-200 active:scale-75 ${isLiked ? 'fill-current' : 'fill-none stroke-current stroke-2'}`} 
+          viewBox="0 0 20 20"
+        >
+          {isLiked ? (
+             <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+          ) : (
+             <path strokeLinecap="round" strokeLinejoin="round" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
+          )}
+        </svg>
+        {likeCount}
+      </button>
 
       {/* Image Carousel */}
       <div className="aspect-[3/4] w-full overflow-hidden bg-gray-100 relative">
         <AnimatePresence mode="wait">
           <motion.img
-            key={currentImageIndex} // Triggers animation on change
+            key={currentImageIndex} 
             initial={{ opacity: 0.8 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0.8 }}
@@ -136,7 +192,8 @@ const ProductCard = ({ item, user, navigate, handleDelete }) => {
                     description: item.description,
                     brand: item.brand,
                     sizes: item.sizes,
-                    colors: item.colors
+                    colors: item.colors,
+                    likes: item.likes
                   },
                 });
               }}
@@ -152,7 +209,7 @@ const ProductCard = ({ item, user, navigate, handleDelete }) => {
         </div>
 
         {/* Admin Controls */}
-        {user?.phone == adminphone && (
+        {user?.phone === adminphone && (
           <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
             <button
               onClick={() => navigate('/editfood', { state: { productData: item } })}
@@ -173,7 +230,6 @@ const ProductCard = ({ item, user, navigate, handleDelete }) => {
   );
 };
 // --- END Product Card Component ---
-
 
 const ShopPage = () => { 
   const [products, setProducts] = useState([]);
@@ -349,7 +405,7 @@ const ShopPage = () => {
           </div>
         </div>
 
-                {/* --- Category Filters --- */}
+        {/* --- Category Filters --- */}
         <div className="mb-8">
           <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
             {popularCategories.map((cat, idx) => (
@@ -413,7 +469,6 @@ const ShopPage = () => {
             transition={{ duration: 0.4 }}
             className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5" 
           >
-            {/* Render the extracted ProductCard component */}
             {filteredItems.map((item) => (
               <ProductCard 
                 key={item._id} 

@@ -44,7 +44,6 @@ const ProfilePage = () => {
         setError(err.response?.data?.message || err.message);
         toast.error(err.response?.data?.message || 'An error occurred');
         if (err.response?.status === 401) {
-          // Token expired or invalid
           navigate('/login');
         }
       } finally {
@@ -56,10 +55,23 @@ const ProfilePage = () => {
   }, [navigate]);
 
   const handleLogout = () => {
-    // Clear the auth token cookie
     document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     toast.success('Logged out successfully');
     navigate('/login');
+  };
+
+  // Helper function for status colors
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'delivered':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+      case 'processing':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+      default:
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'; // Pending
+    }
   };
 
   if (loading) {
@@ -108,7 +120,7 @@ const ProfilePage = () => {
                 />
               </motion.div>
               
-              <h1 className="mt-4 text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 className="mt-4 text-2xl font-bold text-gray-900 dark:text-white capitalize">
                 {userData?.name}
               </h1>
               
@@ -144,7 +156,7 @@ const ProfilePage = () => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Address</p>
-                    <p className="text-gray-900 dark:text-gray-200">{userData?.address}</p>
+                    <p className="text-gray-900 dark:text-gray-200 capitalize">{userData?.address}</p>
                   </div>
                 </div>
               </motion.div>
@@ -160,7 +172,7 @@ const ProfilePage = () => {
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Member Since</p>
                     <p className="text-gray-900 dark:text-gray-200">
-                      {new Date(userData?._id?.toString()?.substring(0, 8) * 1000).toLocaleDateString()}
+                      {userData?._id ? new Date(parseInt(userData._id.substring(0, 8), 16) * 1000).toLocaleDateString() : 'N/A'}
                     </p>
                   </div>
                   <div>
@@ -176,13 +188,13 @@ const ProfilePage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="mt-8 bg-white dark:bg-gray-800 p-4 shadow rounded-lg border border-transparent dark:border-gray-700 transition-colors duration-300"
+              className="mt-8 bg-white dark:bg-gray-800 p-5 shadow rounded-lg border border-transparent dark:border-gray-700 transition-colors duration-300"
             >
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-medium text-gray-900 dark:text-white">Your Orders</h2>
+                <h2 className="text-lg font-medium text-gray-900 dark:text-white">Recent Orders</h2>
                 <button
                   onClick={() => navigate('/orderhistory')}
-                  className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors font-medium"
                 >
                   View All
                 </button>
@@ -190,15 +202,38 @@ const ProfilePage = () => {
               
               {userData?.orders?.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {userData.orders.slice(0, 2).map(order => (
-                    <div key={order} className="border dark:border-gray-700 rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Order ID</p>
-                      <p className="text-gray-900 dark:text-gray-200 font-mono text-sm">{order}</p>
+                  {/* Updated mapping to handle the new object structure */}
+                  {userData.orders.slice(0, 2).map((order) => (
+                    <div key={order._id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md bg-gray-50/50 dark:bg-gray-700/20 transition-all duration-300 flex flex-col justify-between">
+                      
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Order ID</p>
+                          <p className="text-gray-900 dark:text-gray-200 font-mono text-xs font-semibold bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded inline-block">
+                            #{order._id?.slice(-8).toUpperCase()}
+                          </p>
+                        </div>
+                        <span className={`px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold rounded-full ${getStatusColor(order.status)}`}>
+                          {order.status || 'Pending'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between items-end mt-2 pt-3 border-t border-gray-100 dark:border-gray-700">
+                         <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Items</p>
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{order.quantity}</p>
+                         </div>
+                         <div className="text-right">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Total Price</p>
+                            <p className="text-base font-bold text-gray-900 dark:text-white">₹{order.priceAtPurchase * order.quantity}</p>
+                         </div>
+                      </div>
+
                     </div>
                   ))}
                 </div> 
               ) : (
-                <div className="text-center py-8">
+                <div className="text-center py-10 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
                   <svg
                     className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
                     fill="none"

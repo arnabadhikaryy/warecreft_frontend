@@ -25,7 +25,8 @@ function Product() {
     description,
     brand,
     sizes = [],
-    colors = []
+    colors = [],
+    likes = 0 // Added likes to destructuring (pass this from ShopPage!)
   } = location.state || {};
 
   // Create a normalized image array (fallback to url if images array is missing)
@@ -40,6 +41,10 @@ function Product() {
   const [loadingCod, setLoadingCod] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [userToken, setUserToken] = useState('');
+
+  // NEW: State for liking system
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(likes);
 
   // State for confirmation modal
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -74,6 +79,42 @@ function Product() {
     }
   }, [navigate, location.state]);
 
+  // NEW: Function to handle toggling likes
+  const handleLikeToggle = async () => {
+    if (!userToken) {
+      toast.error("Please log in to like products!");
+      // Optional: navigate('/login');
+      return;
+    }
+
+    // Optimistic Update
+    setIsLiked(!isLiked);
+    setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
+
+    try {
+      const response = await axios.post(`${backend_Url}/production/toggleLikeProduct`, {
+        productId: id,
+        token: userToken
+      });
+
+      if (response.data.success) {
+        // Sync with backend confirmation
+        setIsLiked(response.data.isLiked);
+      } else {
+        // Revert if logic failed
+        setIsLiked(!isLiked);
+        setLikeCount(prev => isLiked ? prev + 1 : prev - 1);
+        toast.error(response.data.message || "Failed to update like.");
+      }
+    } catch (error) {
+      // Revert if API failed
+      setIsLiked(!isLiked);
+      setLikeCount(prev => isLiked ? prev + 1 : prev - 1);
+      console.error("Error toggling like:", error);
+      toast.error("Something went wrong!");
+    }
+  };
+
   // Validation helper
   const validateSelection = () => {
     if (sizes.length > 0 && !selectedSize) {
@@ -105,7 +146,6 @@ function Product() {
           amount: price * quantity,
           FOODorderID: id,
           token: userToken
-          // Note: You can add size/color to this payload later if your backend supports it
         }
       );
 
@@ -147,8 +187,7 @@ function Product() {
           token: userToken,
           orderID: id,
           after_discount_final_price: price,
-          quantity: quantity,  // ← ADD THIS: Send the quantity to backend
-          // Also send size and color if your schema supports it
+          quantity: quantity,
           selectedSize: selectedSize,
           selectedColor: selectedColor
         }
@@ -286,10 +325,37 @@ function Product() {
                 </span>
               </div>
 
-              {/* Title */}
-              <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight mb-4 leading-tight">
-                {title}
-              </h1>
+              {/* UPDATED: Title & Like Button Row */}
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight leading-tight">
+                  {title}
+                </h1>
+                
+                {/* Like Button */}
+                <button
+                  onClick={handleLikeToggle}
+                  className={`flex-shrink-0 p-3 rounded-full flex flex-col items-center justify-center transition-all shadow-sm border ${
+                    isLiked 
+                      ? 'bg-red-50 border-red-100 text-red-500' 
+                      : 'bg-white border-gray-200 text-gray-400 hover:text-red-500 hover:bg-gray-50'
+                  }`}
+                  aria-label="Like product"
+                >
+                  <svg 
+                    className={`w-6 h-6 transition-transform duration-200 active:scale-75 ${isLiked ? 'fill-current' : 'fill-none stroke-current stroke-2'}`} 
+                    viewBox="0 0 20 20"
+                  >
+                    {isLiked ? (
+                       <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                    ) : (
+                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
+                    )}
+                  </svg>
+                  {likeCount > 0 && (
+                    <span className="text-[10px] font-bold mt-0.5 leading-none">{likeCount}</span>
+                  )}
+                </button>
+              </div>
 
               {/* Pricing */}
               <div className="mb-6 flex flex-col gap-1">
@@ -379,7 +445,7 @@ function Product() {
                   <div className="flex items-center bg-white rounded-xl border border-gray-200 w-fit shadow-sm">
 
                     <button
-                      onClick={() => handleQuantityChange(-1)}  // ← FIX THIS
+                      onClick={() => handleQuantityChange(-1)} 
                       className="p-3 text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-30"
                       disabled={quantity <= 1 || loading || loadingCod}
                     >
@@ -389,7 +455,7 @@ function Product() {
                     </button>
 
                     <button
-                      onClick={() => handleQuantityChange(1)}  // ← FIX THIS
+                      onClick={() => handleQuantityChange(1)} 
                       className="p-3 text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-30"
                       disabled={quantity >= 10 || loading || loadingCod}
                     >
@@ -438,7 +504,7 @@ function Product() {
                       <span>Processing...</span>
                     </div>
                   ) : (
-                    <span className=' text-black'>Place Order (Cash on Delivery)</span>
+                    <span className=' text-white'>Place Order (Cash on Delivery)</span>
                   )}
                 </motion.button>
               </div>
