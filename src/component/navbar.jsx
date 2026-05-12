@@ -155,7 +155,7 @@ const Navbar = () => {
                   {user?.phone == adminphone && (
                     <div className="border-t border-gray-100 dark:border-gray-800 my-2 pt-2">
                       <p className="px-3 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Admin</p>
-                      <MobileNavLink to="/addfood" text="Add Food" onClick={() => setDropdownOpen(false)} />
+                      <MobileNavLink to="/addfood" text="Add product" onClick={() => setDropdownOpen(false)} />
                       <MobileNavLink to="/allusersorders" text="All Users Orders" onClick={() => setDropdownOpen(false)} />
                     </div>
                   )}
