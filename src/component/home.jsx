@@ -244,13 +244,16 @@ const ShopPage = () => {
 
   const banners = [
     "https://res.cloudinary.com/dr6u53c39/image/upload/WhatsApp_Image_2026-05-02_at_1.20.56_PM_utrgua.jpg",
+    "https://res.cloudinary.com/dr6u53c39/image/upload/v1779038926/Screenshot_1948-02-27_at_10.58.29_PM_pkjzmf.png",
+    "https://res.cloudinary.com/dr6u53c39/image/upload/v1779039079/Screenshot_1948-02-27_at_11.00.58_PM_nw6mxg.png",
+    "https://res.cloudinary.com/dr6u53c39/image/upload/v1779039274/Fashion_Sale_Banner_2_peqyzr.jpg"
   ];
 
   const popularCategories = [
-    { name: "All", image: "https://cdn-icons-png.flaticon.com/512/8333/8333246.png" }, 
-    { name: "Men", image: "https://static.thenounproject.com/png/860317-200.png" },
-    { name: "Women", image: "https://img.freepik.com/premium-vector/woman-dress-icon-simple-illustration-woman-dress-vector-icon-web_96318-24869.jpg" },
-    { name: "Kids", image: "https://cdn-icons-png.flaticon.com/512/2934/2934315.png" },
+    { name: "All", image: "https://res.cloudinary.com/dr6u53c39/image/upload/v1779038347/Screenshot_1948-02-27_at_10.48.21_PM_xwuomo.png" }, 
+    { name: "Men", image: "https://res.cloudinary.com/dr6u53c39/image/upload/v1779037772/Screenshot_1948-02-27_at_10.34.59_PM_nxs0e6.png" },
+    { name: "Women", image: "https://res.cloudinary.com/dr6u53c39/image/upload/v1779037942/Screenshot_1948-02-27_at_10.42.12_PM_ybrubq.png" },
+    { name: "Kids", image: "https://res.cloudinary.com/dr6u53c39/image/upload/v1779038013/Screenshot_1948-02-27_at_10.43.22_PM_gk5sfi.png" },
     { name: "Unisex", image: "https://cdn-icons-png.flaticon.com/512/4663/4663080.png" }
   ];
 
