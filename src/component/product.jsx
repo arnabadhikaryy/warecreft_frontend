@@ -330,25 +330,24 @@ function Product() {
                 <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight leading-tight">
                   {title}
                 </h1>
-                
+
                 {/* Like Button */}
                 <button
                   onClick={handleLikeToggle}
-                  className={`flex-shrink-0 p-3 rounded-full flex flex-col items-center justify-center transition-all shadow-sm border ${
-                    isLiked 
-                      ? 'bg-red-50 border-red-100 text-red-500' 
-                      : 'bg-white border-gray-200 text-gray-400 hover:text-red-500 hover:bg-gray-50'
-                  }`}
+                  className={`flex-shrink-0 p-3 rounded-full flex flex-col items-center justify-center transition-all shadow-sm border ${isLiked
+                    ? 'bg-red-50 border-red-100 text-red-500'
+                    : 'bg-white border-gray-200 text-gray-400 hover:text-red-500 hover:bg-gray-50'
+                    }`}
                   aria-label="Like product"
                 >
-                  <svg 
-                    className={`w-6 h-6 transition-transform duration-200 active:scale-75 ${isLiked ? 'fill-current' : 'fill-none stroke-current stroke-2'}`} 
+                  <svg
+                    className={`w-6 h-6 transition-transform duration-200 active:scale-75 ${isLiked ? 'fill-current' : 'fill-none stroke-current stroke-2'}`}
                     viewBox="0 0 20 20"
                   >
                     {isLiked ? (
-                       <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                      <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                     ) : (
-                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
                     )}
                   </svg>
                   {likeCount > 0 && (
@@ -445,7 +444,7 @@ function Product() {
                   <div className="flex items-center bg-white rounded-xl border border-gray-200 w-fit shadow-sm">
 
                     <button
-                      onClick={() => handleQuantityChange(-1)} 
+                      onClick={() => handleQuantityChange(-1)}
                       className="p-3 text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-30"
                       disabled={quantity <= 1 || loading || loadingCod}
                     >
@@ -455,7 +454,7 @@ function Product() {
                     </button>
 
                     <button
-                      onClick={() => handleQuantityChange(1)} 
+                      onClick={() => handleQuantityChange(1)}
                       className="p-3 text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-30"
                       disabled={quantity >= 10 || loading || loadingCod}
                     >
@@ -504,9 +503,24 @@ function Product() {
                       <span>Processing...</span>
                     </div>
                   ) : (
-                    <span className=' text-white'>Place Order (Cash on Delivery)</span>
+                    <span className=' text-blue-600'>Place Order (Cash on Delivery)</span>
                   )}
                 </motion.button>
+
+                <button
+                  className="w-full py-4 rounded-xl text-base font-bold transition-all bg-green-400 text-blue-950 cursor-not-allowed border border-gray-200 flex justify-center items-center gap-2"
+                  onClick={() => {
+                    const phone = "7365075168"; // country code + number, no + or spaces
+                    const message = `i like the product ${title}. the price mention ${price}, have discount ${discount}, product quality ${description}. i want to talk with you about the product.`
+
+                    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+
+                    // Redirect
+                    window.location.href = url;
+                  }}
+                >
+                  Direct whatsapp message to supplier
+                </button>
               </div>
 
             </div>
