@@ -13,11 +13,10 @@ function Product() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Safe destructuring with all the new apparel fields
   const {
     id,
     images,
-    url, // Fallback for old data
+    url,
     title,
     price,
     originalPrice,
@@ -26,10 +25,9 @@ function Product() {
     brand,
     sizes = [],
     colors = [],
-    likes = 0 // Added likes to destructuring (pass this from ShopPage!)
+    likes = 0
   } = location.state || {};
 
-  // Create a normalized image array (fallback to url if images array is missing)
   const imageList = images && images.length > 0 ? images : (url ? [url] : ['https://via.placeholder.com/600x800?text=No+Image']);
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -42,15 +40,19 @@ function Product() {
   const [quantity, setQuantity] = useState(1);
   const [userToken, setUserToken] = useState('');
 
-  // NEW: State for liking system
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(likes);
-
-  // State for confirmation modal
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
+  // State for Reviews
+  const [reviews, setReviews] = useState([]);
+  const [reviewStats, setReviewStats] = useState({ averageRating: 0, totalReviews: 0 });
+  const [loadingReviews, setLoadingReviews] = useState(true);
+
+  // NEW: State for Fullscreen Image Viewer
+  const [selectedImage, setSelectedImage] = useState(null);
+
   useEffect(() => {
-    // If no state exists (user navigated directly to URL), redirect back
     if (!location.state) {
       navigate('/');
       return;
@@ -72,22 +74,48 @@ function Product() {
         console.error("Token decode error:", error);
         navigate('/login');
       }
-    } else {
-      // It's common in e-commerce to allow viewing without login, 
-      // but redirect if they try to buy. Kept your original logic here.
-      navigate('/register');
     }
   }, [navigate, location.state]);
 
-  // NEW: Function to handle toggling likes
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!id) return;
+
+      try {
+        const response = await axios.post(
+          `${backend_Url}/production/getProductReviews`,
+          { productId: id },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (response.data.success) {
+          setReviews(response.data.reviews || []);
+          setReviewStats(
+            response.data.stats || {
+              averageRating: 0,
+              totalReviews: 0,
+            }
+          );
+        }
+      } catch (error) {
+        console.error("Failed to fetch reviews:", error);
+      } finally {
+        setLoadingReviews(false);
+      }
+    };
+    fetchReviews();
+  }, [id]);
+
   const handleLikeToggle = async () => {
     if (!userToken) {
       toast.error("Please log in to like products!");
-      // Optional: navigate('/login');
       return;
     }
 
-    // Optimistic Update
     setIsLiked(!isLiked);
     setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
 
@@ -98,16 +126,13 @@ function Product() {
       });
 
       if (response.data.success) {
-        // Sync with backend confirmation
         setIsLiked(response.data.isLiked);
       } else {
-        // Revert if logic failed
         setIsLiked(!isLiked);
         setLikeCount(prev => isLiked ? prev + 1 : prev - 1);
         toast.error(response.data.message || "Failed to update like.");
       }
     } catch (error) {
-      // Revert if API failed
       setIsLiked(!isLiked);
       setLikeCount(prev => isLiked ? prev + 1 : prev - 1);
       console.error("Error toggling like:", error);
@@ -115,7 +140,6 @@ function Product() {
     }
   };
 
-  // Validation helper
   const validateSelection = () => {
     if (sizes.length > 0 && !selectedSize) {
       toast.error('Please select a size');
@@ -126,43 +150,6 @@ function Product() {
       return false;
     }
     return true;
-  };
-
-  const handlePlaceOrder = async () => {
-    if (!userPhone) {
-      toast.error('Please login to place an order');
-      navigate('/login');
-      return;
-    }
-
-    if (!validateSelection()) return;
-
-    setLoading(true);
-    try {
-      const response = await axios.post(
-        `${backend_Url}/api/v1/orders/payment`,
-        {
-          name: title,
-          amount: price * quantity,
-          FOODorderID: id,
-          token: userToken
-        }
-      );
-
-      if (response.data.url) {
-        window.location.href = response.data.url;
-      } else {
-        toast.error(response.data.message || 'Failed to place order');
-        setLoading(false);
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || 'Payment initiation failed');
-      if (error.response?.status === 401) {
-        navigate('/login');
-      }
-      setLoading(false);
-    }
   };
 
   const openConfirmation = () => {
@@ -214,12 +201,66 @@ function Product() {
     }
   };
 
+  const renderStars = (rating) => {
+    return (
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <svg
+            key={star}
+            className={`w-4 h-4 ${star <= Math.round(rating) ? 'text-yellow-400' : 'text-gray-300'}`}
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+        ))}
+      </div>
+    );
+  };
+
   if (!location.state) return null;
 
   return (
     <div className="min-h-screen w-screen bg-white flex flex-col relative font-sans">
       <Navbar />
       <Toaster position="top-right" />
+
+      {/* --- NEW: Fullscreen Image Modal --- */}
+      <AnimatePresence>
+        {selectedImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            // Click outside the image to close
+            onClick={() => setSelectedImage(null)}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 sm:p-8 backdrop-blur-sm"
+          >
+            {/* Close Button in the corner */}
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-4 right-4 sm:top-8 sm:right-8 text-red-700 bg-red-200 hover:bg-white/20 rounded-full p-2 transition-colors z-50"
+              title="Close image"
+            >
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* The Fullscreen Image */}
+            <motion.img
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              src={selectedImage}
+              alt="Fullscreen view"
+              // e.stopPropagation prevents clicking the image itself from triggering the close function
+              onClick={(e) => e.stopPropagation()}
+              className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* --- Confirmation Modal --- */}
       <AnimatePresence>
@@ -277,7 +318,6 @@ function Product() {
 
             {/* LEFT: Image Gallery Section */}
             <div className="flex flex-col gap-4">
-              {/* Main Display Image */}
               <div className="relative aspect-[3/4] lg:aspect-[4/5] w-full rounded-2xl bg-gray-100 overflow-hidden border border-gray-100">
                 <AnimatePresence mode="wait">
                   <motion.img
@@ -293,7 +333,6 @@ function Product() {
                 </AnimatePresence>
               </div>
 
-              {/* Thumbnails Row */}
               {imageList.length > 1 && (
                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                   {imageList.map((imgSrc, idx) => (
@@ -315,7 +354,6 @@ function Product() {
             {/* RIGHT: Product Details Section */}
             <div className="py-6 lg:py-0 flex flex-col">
 
-              {/* Brand & Badges */}
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-bold text-gray-400 tracking-widest uppercase">
                   {brand || 'Apparel'}
@@ -325,20 +363,17 @@ function Product() {
                 </span>
               </div>
 
-              {/* UPDATED: Title & Like Button Row */}
-              <div className="flex items-start justify-between gap-4 mb-4">
+              <div className="flex items-start justify-between gap-4 mb-2">
                 <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight leading-tight">
                   {title}
                 </h1>
 
-                {/* Like Button */}
                 <button
                   onClick={handleLikeToggle}
                   className={`flex-shrink-0 p-3 rounded-full flex flex-col items-center justify-center transition-all shadow-sm border ${isLiked
                     ? 'bg-red-50 border-red-100 text-red-500'
                     : 'bg-white border-gray-200 text-gray-400 hover:text-red-500 hover:bg-gray-50'
                     }`}
-                  aria-label="Like product"
                 >
                   <svg
                     className={`w-6 h-6 transition-transform duration-200 active:scale-75 ${isLiked ? 'fill-current' : 'fill-none stroke-current stroke-2'}`}
@@ -356,8 +391,16 @@ function Product() {
                 </button>
               </div>
 
-              {/* Pricing */}
-              <div className="mb-6 flex flex-col gap-1">
+              {!loadingReviews && reviewStats.totalReviews > 0 && (
+                <div className="flex items-center gap-2 mb-4">
+                  {renderStars(reviewStats.averageRating)}
+                  <a href="#reviews" className="text-sm font-medium text-emerald-600 hover:underline">
+                    {reviewStats.totalReviews} Review{reviewStats.totalReviews !== 1 && 's'}
+                  </a>
+                </div>
+              )}
+
+              <div className="mb-6 flex flex-col gap-1 mt-2">
                 {discount && discount > 0 ? (
                   <>
                     <div className="flex items-center gap-3">
@@ -380,10 +423,8 @@ function Product() {
                 <p className="text-xs text-gray-400 mt-1">Inclusive of all taxes</p>
               </div>
 
-              {/* Divider */}
               <div className="h-px bg-gray-200 w-full mb-6"></div>
 
-              {/* Sizes Selector */}
               {sizes && sizes.length > 0 && (
                 <div className="mb-6">
                   <div className="flex justify-between items-center mb-3">
@@ -407,7 +448,6 @@ function Product() {
                 </div>
               )}
 
-              {/* Colors Selector */}
               {colors && colors.length > 0 && (
                 <div className="mb-8">
                   <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Select Color</h3>
@@ -429,7 +469,6 @@ function Product() {
                 </div>
               )}
 
-              {/* Description */}
               <div className="mb-8">
                 <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Product Details</h3>
                 <p className="text-gray-600 text-base leading-relaxed">
@@ -437,12 +476,10 @@ function Product() {
                 </p>
               </div>
 
-              {/* Quantity & Total */}
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-8 bg-gray-50 p-4 rounded-2xl border border-gray-100">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Quantity</label>
                   <div className="flex items-center bg-white rounded-xl border border-gray-200 w-fit shadow-sm">
-
                     <button
                       onClick={() => handleQuantityChange(-1)}
                       className="p-3 text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-30"
@@ -463,7 +500,6 @@ function Product() {
                       </svg>
                     </button>
                     <span className="w-10 text-center font-bold text-gray-900 text-lg select-none">{quantity}</span>
-
                   </div>
                 </div>
 
@@ -473,7 +509,6 @@ function Product() {
                 </div>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex flex-col gap-3 mt-auto">
                 <button
                   disabled={true}
@@ -508,14 +543,11 @@ function Product() {
                 </motion.button>
 
                 <button
-                  className="w-full py-4 rounded-xl text-base font-bold transition-all bg-green-400 text-blue-950 cursor-not-allowed border border-gray-200 flex justify-center items-center gap-2"
+                  className="w-full py-4 rounded-xl text-base font-bold transition-all bg-green-400 text-blue-950 border border-gray-200 flex justify-center items-center gap-2"
                   onClick={() => {
-                    const phone = "7365075168"; // country code + number, no + or spaces
-                    const message = `i like the product ${title}. the price mention ${price}, have discount ${discount}, product quality ${description}. i want to talk with you about the product.`
-
+                    const phone = "7501294656";
+                    const message = `i like the product ${title}. the price mention ${price}, have discount ${discount}, product quality ${description}. i want to talk with you about the product.`;
                     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-
-                    // Redirect
                     window.location.href = url;
                   }}
                 >
@@ -525,6 +557,61 @@ function Product() {
 
             </div>
           </div>
+
+          {/* --- Customer Reviews Section --- */}
+          <div id="reviews" className="mt-16 border-t border-gray-200 pt-10 pb-10">
+            <h2 className="text-2xl font-bold text-gray-900 mb-8">Customer Reviews</h2>
+
+            {loadingReviews ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+              </div>
+            ) : reviews.length === 0 ? (
+              <div className="bg-gray-50 rounded-2xl p-8 text-center">
+                <p className="text-gray-500 font-medium">No reviews yet for this product.</p>
+                <p className="text-sm text-gray-400 mt-1">Be the first to order and review it!</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {reviews.map((review, idx) => (
+                  <div key={idx} className="bg-gray-50 p-6 rounded-2xl border border-gray-100 flex flex-col gap-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="font-bold text-gray-900 capitalize">{review.userName || 'Anonymous User'}</span>
+                        <div className="mt-1">{renderStars(review.rating)}</div>
+                      </div>
+                      {review.createdAt && (
+                        <span className="text-xs text-gray-400 font-medium">
+                          {new Date(review.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-gray-600 text-sm mt-1 leading-relaxed">
+                      {review.comment}
+                    </p>
+
+                    {/* NEW: Clickable Review Images */}
+                    {review.reviewImages && review.reviewImages.length > 0 && (
+                      <div className="flex gap-2 mt-3 overflow-x-auto pb-2 scrollbar-hide">
+                        {review.reviewImages.map((img, imgIdx) => (
+                          <div
+                            key={imgIdx}
+                            onClick={() => setSelectedImage(img)} // Triggers fullscreen
+                            className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden border border-gray-200 bg-white cursor-pointer hover:opacity-80 transition-opacity"
+                            title="Click to expand"
+                          >
+                            <img src={img} alt="Review attachment" className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
         </motion.div>
       </div>
       <Footer />

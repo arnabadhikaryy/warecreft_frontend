@@ -243,7 +243,7 @@ const ShopPage = () => {
   const navigate = useNavigate();
 
   const banners = [
-    "https://res.cloudinary.com/dr6u53c39/image/upload/WhatsApp_Image_2026-05-02_at_1.20.56_PM_utrgua.jpg",
+    "https://res.cloudinary.com/dr6u53c39/image/upload/v1779086454/Gemini_Generated_Image_tu33vitu33vitu33_eilbvc.png",
     "https://res.cloudinary.com/dr6u53c39/image/upload/v1779038926/Screenshot_1948-02-27_at_10.58.29_PM_pkjzmf.png",
     "https://res.cloudinary.com/dr6u53c39/image/upload/v1779039079/Screenshot_1948-02-27_at_11.00.58_PM_nw6mxg.png",
     "https://res.cloudinary.com/dr6u53c39/image/upload/v1779039274/Fashion_Sale_Banner_2_peqyzr.jpg"

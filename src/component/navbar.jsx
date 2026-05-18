@@ -49,12 +49,12 @@ const Navbar = () => {
           {/* Left side - Logo/Brand */}
           <div className="flex items-center gap-3">
             <img
-              src="https://res.cloudinary.com/dr6u53c39/image/upload/WhatsApp_Image_2026-05-02_at_12.21.08_PM_u33xj9.jpg"
+              src="https://res.cloudinary.com/dr6u53c39/image/upload/v1779084676/file_000000009cc47207ac5fe9f053f59bde_bfhh1z.png"
               alt="Logo"
               className="w-12 h-12  object-cover border-2 border-emerald-500"
             />
             <Link to="/" className="flex items-center gap-2 text-2xl font-serif italic text-gray-900 dark:text-white hover:text-emerald-600 transition-colors">
-              Wear<span className="not-italic font-bold border-b-2 border-emerald-500">Craft</span>
+              Next<span className="not-italic font-bold border-b-2 border-emerald-500">Wardrobe</span>
             </Link>
           </div>
 
