@@ -72,8 +72,8 @@ const LoginPage = () => {
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-16 z-10">
           <div className="w-48 h-48 rounded-full overflow-hidden border-4 border-white shadow-sm bg-white flex items-center justify-center">
             <img 
-              src="https://res.cloudinary.com/dr6u53c39/image/upload/WhatsApp_Image_2026-05-02_at_12.21.08_PM_u33xj9.jpg" 
-              alt="wearcraft" 
+              src="https://res.cloudinary.com/dr6u53c39/image/upload/v1779084676/file_000000009cc47207ac5fe9f053f59bde_bfhh1z.png" 
+              alt="Next Wardrobe" 
               className="w-full h-full object-cover"
             />
           </div>
