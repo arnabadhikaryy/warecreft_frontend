@@ -460,7 +460,7 @@ function Product() {
 
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-bold text-gray-400 tracking-widest uppercase">
-                  {brand || 'Apparel'}
+                  {brand || 'NextWardrobe'}
                 </span>
                 <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-green-100 text-green-800 uppercase tracking-wider">
                   In Stock
@@ -471,8 +471,8 @@ function Product() {
                 <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight leading-tight">
                   {title}
                 </h1>
-
-                <div className="flex gap-2">
+              
+                <div className="flex flex-col-reverse gap-2">
                   {/* NEW: Add to Cart / Remove from Cart Button */}
                   <button
                     onClick={isInCart ? handleRemoveFromCart : handleAddToCart}
