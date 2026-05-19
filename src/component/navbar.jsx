@@ -148,6 +148,7 @@ const Navbar = () => {
 
               {user && (
                 <>
+                  <MobileNavLink to="/cart" text="Cart" onClick={() => setDropdownOpen(false)} />
                   <MobileNavLink to="/profile" text="Your Profile" onClick={() => setDropdownOpen(false)} />
                   <MobileNavLink to="/profile/edit" text="Edit Profile" onClick={() => setDropdownOpen(false)} />
                   <MobileNavLink to="/orderhistory" text="Your Orders" onClick={() => setDropdownOpen(false)} />
