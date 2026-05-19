@@ -15,6 +15,7 @@ import Footer from "./component/futer";
 import OrderSuccess from "./component/OrderSuccess";
 import EditProfile from "./component/editprofilepage";
 import EditFoodItem from "./component/EditFoodItem";
+import Cart from "./component/cartItem";
 function App() {
 
   return (
@@ -33,6 +34,7 @@ function App() {
         <Route path="*" element={<NotFoundPage />} />
         <Route path="/faildpayment" element={<Faildpayment />} />
         <Route path="/allusersorders" element={<AllUsersOrders />} />
+        <Route path="/cart" element={<Cart />} />
         {/*  <Route path="/upload/servide" element={<UploadService />} />
       <Route path="/upload/project" element={<ProjectUploadForm />} />
       <Route path="/upload/education" element={<EducationUploadForm />} />

@@ -65,6 +65,7 @@ const Navbar = () => {
             {user && (
               <>
                 <NavLink to="/profile" text="Account" />
+                <NavLink to="/cart" text="Cart"/>
                 <NavLink to="/orderhistory" text="Your Orders" />
                 <NavLink to="/profile/edit" text="Edit Profile" />
               </>

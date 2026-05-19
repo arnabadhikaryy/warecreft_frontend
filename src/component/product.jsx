@@ -52,6 +52,10 @@ function Product() {
   // NEW: State for Fullscreen Image Viewer
   const [selectedImage, setSelectedImage] = useState(null);
 
+  // NEW: State for Cart functionality
+  const [isInCart, setIsInCart] = useState(false);
+  const [cartLoading, setCartLoading] = useState(false);
+
   useEffect(() => {
     if (!location.state) {
       navigate('/');
@@ -76,6 +80,36 @@ function Product() {
       }
     }
   }, [navigate, location.state]);
+
+  // Check if product is in cart
+  useEffect(() => {
+    const checkCartStatus = async () => {
+      if (!userToken || !id) return;
+
+      try {
+        const response = await axios.post(
+          `${backend_Url}/user/check/cart`,
+          {
+            productId: id,
+            token: userToken
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (response.data.inCart) {
+          setIsInCart(true);
+        }
+      } catch (error) {
+        console.error("Error checking cart status:", error);
+      }
+    };
+
+    checkCartStatus();
+  }, [userToken, id]);
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -137,6 +171,80 @@ function Product() {
       setLikeCount(prev => isLiked ? prev + 1 : prev - 1);
       console.error("Error toggling like:", error);
       toast.error("Something went wrong!");
+    }
+  };
+
+  // NEW: Handle Add to Cart
+  const handleAddToCart = async () => {
+    if (!userToken) {
+      toast.error("Please log in to add items to cart!");
+      navigate('/login');
+      return;
+    }
+
+    setCartLoading(true);
+    try {
+      const response = await axios.post(
+        `${backend_Url}/user/add/cart`,
+        {
+          productId: id,
+          token: userToken
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.data.message.includes("successfully")) {
+        setIsInCart(true);
+        toast.success("Product added to cart!");
+      } else {
+        toast.error(response.data.message || "Failed to add to cart");
+      }
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      toast.error(error.response?.data?.message || "Something went wrong!");
+    } finally {
+      setCartLoading(false);
+    }
+  };
+
+  // NEW: Handle Remove from Cart
+  const handleRemoveFromCart = async () => {
+    if (!userToken) {
+      toast.error("Please log in!");
+      navigate('/login');
+      return;
+    }
+
+    setCartLoading(true);
+    try {
+      const response = await axios.post(
+        `${backend_Url}/user/remove/cart`,
+        {
+          productId: id,
+          token: userToken
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.data.message.includes("successfully")) {
+        setIsInCart(false);
+        toast.success("Product removed from cart!");
+      } else {
+        toast.error(response.data.message || "Failed to remove from cart");
+      }
+    } catch (error) {
+      console.error("Error removing from cart:", error);
+      toast.error(error.response?.data?.message || "Something went wrong!");
+    } finally {
+      setCartLoading(false);
     }
   };
 
@@ -232,11 +340,9 @@ function Product() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            // Click outside the image to close
             onClick={() => setSelectedImage(null)}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 sm:p-8 backdrop-blur-sm"
           >
-            {/* Close Button in the corner */}
             <button
               onClick={() => setSelectedImage(null)}
               className="absolute top-4 right-4 sm:top-8 sm:right-8 text-red-700 bg-red-200 hover:bg-white/20 rounded-full p-2 transition-colors z-50"
@@ -247,14 +353,12 @@ function Product() {
               </svg>
             </button>
 
-            {/* The Fullscreen Image */}
             <motion.img
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.9 }}
               src={selectedImage}
               alt="Fullscreen view"
-              // e.stopPropagation prevents clicking the image itself from triggering the close function
               onClick={(e) => e.stopPropagation()}
               className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
             />
@@ -368,27 +472,68 @@ function Product() {
                   {title}
                 </h1>
 
-                <button
-                  onClick={handleLikeToggle}
-                  className={`flex-shrink-0 p-3 rounded-full flex flex-col items-center justify-center transition-all shadow-sm border ${isLiked
-                    ? 'bg-red-50 border-red-100 text-red-500'
-                    : 'bg-white border-gray-200 text-gray-400 hover:text-red-500 hover:bg-gray-50'
-                    }`}
-                >
-                  <svg
-                    className={`w-6 h-6 transition-transform duration-200 active:scale-75 ${isLiked ? 'fill-current' : 'fill-none stroke-current stroke-2'}`}
-                    viewBox="0 0 20 20"
+                <div className="flex gap-2">
+                  {/* NEW: Add to Cart / Remove from Cart Button */}
+                  <button
+                    onClick={isInCart ? handleRemoveFromCart : handleAddToCart}
+                    disabled={cartLoading}
+                    className={`flex-shrink-0 p-3 rounded-full flex flex-col items-center justify-center transition-all shadow-sm border
+                      ${isInCart
+                        ? 'bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100'
+                        : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100'
+                      }
+                      ${cartLoading ? 'opacity-50 cursor-not-allowed' : ''}
+                    `}
                   >
-                    {isLiked ? (
-                      <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                    {cartLoading ? (
+                      <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
                     ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        {isInCart ? (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        ) : (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6.5M17 13l1.5 6.5M9 21h6M12 18v3" />
+                        )}
+                      </svg>
                     )}
-                  </svg>
-                  {likeCount > 0 && (
-                    <span className="text-[10px] font-bold mt-0.5 leading-none">{likeCount}</span>
-                  )}
-                </button>
+                    {!cartLoading && (
+                      <span className="text-[9px] font-bold mt-1 leading-none">
+                        {isInCart ? 'Remove From Cart' : 'add To Cart'}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Like Button */}
+                  <button
+                    onClick={handleLikeToggle}
+                    className={`flex-shrink-0 p-3 rounded-full flex flex-col items-center justify-center transition-all shadow-sm border ${isLiked
+                      ? 'bg-red-50 border-red-100 text-red-500'
+                      : 'bg-white border-gray-200 text-gray-400 hover:text-red-500 hover:bg-gray-50'
+                      }`}
+                  >
+                    <svg
+                      className={`w-5 h-5 transition-transform duration-200 active:scale-75 ${isLiked ? 'fill-current' : 'fill-none stroke-current stroke-2'}`}
+                      viewBox="0 0 20 20"
+                    >
+                      {isLiked ? (
+                        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                      ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
+                      )}
+                    </svg>
+                    {likeCount > 0 && (
+                      <span className="text-[9px] font-bold mt-0.5 leading-none">{likeCount}</span>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {!loadingReviews && reviewStats.totalReviews > 0 && (
@@ -538,7 +683,7 @@ function Product() {
                       <span>Processing...</span>
                     </div>
                   ) : (
-                    <span className=' text-blue-600'>Place Order (Cash on Delivery)</span>
+                    <span className='text-blue-600'>Place Order (Cash on Delivery)</span>
                   )}
                 </motion.button>
 
@@ -591,13 +736,12 @@ function Product() {
                       {review.comment}
                     </p>
 
-                    {/* NEW: Clickable Review Images */}
                     {review.reviewImages && review.reviewImages.length > 0 && (
                       <div className="flex gap-2 mt-3 overflow-x-auto pb-2 scrollbar-hide">
                         {review.reviewImages.map((img, imgIdx) => (
                           <div
                             key={imgIdx}
-                            onClick={() => setSelectedImage(img)} // Triggers fullscreen
+                            onClick={() => setSelectedImage(img)}
                             className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden border border-gray-200 bg-white cursor-pointer hover:opacity-80 transition-opacity"
                             title="Click to expand"
                           >
