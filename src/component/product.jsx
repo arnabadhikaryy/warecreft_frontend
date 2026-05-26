@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Footer from './futer';
 import Navbar from './navbar';
 import backend_Url from '../backend_url_return_function/backendUrl';
+import { load } from '@cashfreepayments/cashfree-js';
+import { payment_mode } from '../backend_url_return_function/backendUrl';
 
 function Product() {
   const location = useLocation();
@@ -248,6 +250,80 @@ function Product() {
     }
   };
 
+
+
+  const handleOnlinePayment = async () => {
+    if (!validateSelection()) return; // Ensure size/color are picked
+
+    if (!userPhone) {
+      toast.error('Please login to place an order');
+      navigate('/login');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const cashfree = await load({
+        mode: payment_mode // Change to "production" when live
+      });
+
+      const orderResponse = await axios.post(`${backend_Url}/api/v1/orders/payment`, {
+        amount: price * quantity,
+        name: title,
+        phone: userPhone,
+        orderID: id
+      });
+
+      if (orderResponse.data.success) {
+        let checkoutOptions = {
+          paymentSessionId: orderResponse.data.payment_session_id,
+          redirectTarget: "_modal",
+        };
+
+        cashfree.checkout(checkoutOptions).then(async (result) => {
+          if (result.error) {
+            toast.error(result.error.message || "Payment cancelled");
+            setLoading(false);
+          }
+
+          if (result.paymentDetails) {
+            toast.loading("Verifying payment...");
+
+            const verifyResponse = await axios.post(`${backend_Url}/api/v1/orders/verify`, {
+              cf_order_id: orderResponse.data.order_id,
+              userPhone: userPhone,
+              foodOrderID: id,
+              price: price, // Send base price
+              quantity: quantity // Send quantity
+            });
+
+            toast.dismiss();
+
+            if (verifyResponse.data.success) {
+              toast.success("Order placed successfully!");
+              navigate('/ordersuccess');
+            } else {
+              toast.error("Payment verification failed.");
+              setLoading(false);
+            }
+          }
+        });
+      } else {
+        toast.error('Failed to initiate payment');
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error(error.response?.data?.message || 'Payment initiation failed');
+      setLoading(false);
+    }
+  };
+
+
+
+
+
+
   const validateSelection = () => {
     if (sizes.length > 0 && !selectedSize) {
       toast.error('Please select a size');
@@ -471,7 +547,7 @@ function Product() {
                 <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight leading-tight">
                   {title}
                 </h1>
-              
+
                 <div className="flex flex-col-reverse gap-2">
                   {/* NEW: Add to Cart / Remove from Cart Button */}
                   <button
@@ -655,13 +731,35 @@ function Product() {
               </div>
 
               <div className="flex flex-col gap-3 mt-auto">
-                <button
-                  disabled={true}
-                  className="w-full py-4 rounded-xl text-base font-bold transition-all bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200 flex justify-center items-center gap-2"
+
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleOnlinePayment}
+                  disabled={loading || loadingCod}
+                  className={`w-full py-4 rounded-xl text-base font-bold shadow-sm border transition-all flex justify-center items-center gap-2
+    ${loading || loadingCod
+                      ? 'bg-blue-300 border-blue-300 text-emerald-600 cursor-not-allowed'
+                      : 'bg-blue-600 border-blue-600 text-emerald-600 hover:bg-blue-700'
+                    }`}
                 >
-                  <svg className="w-5 h-5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                  Pay Online (Currently Unavailable)
-                </button>
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 text-blue-950" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Initializing Payment...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                      </svg>
+                      <span >Pay Online Now</span>
+                    </>
+                  )}
+                </motion.button>
 
                 <motion.button
                   whileHover={{ scale: 1.01 }}
@@ -670,8 +768,8 @@ function Product() {
                   disabled={loading || loadingCod}
                   className={`w-full py-4 px-6 rounded-xl text-base font-bold shadow-lg transition-all 
                     ${loading || loadingCod
-                      ? 'bg-emerald-400 cursor-not-allowed text-white shadow-none'
-                      : 'bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-emerald-200'
+                      ? 'bg-emerald-400 cursor-not-allowed text-blue-900 shadow-none'
+                      : 'bg-emerald-600 text-blue-950 hover:bg-emerald-700 hover:shadow-emerald-200'
                     }`}
                 >
                   {loadingCod || loading ? (
