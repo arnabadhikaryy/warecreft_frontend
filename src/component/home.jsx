@@ -1,70 +1,56 @@
 import React, { useState, useEffect } from 'react';
-import Footer from './futer'; 
+import Footer from './futer';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
-import { motion, AnimatePresence } from "framer-motion"; 
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from 'react-router-dom';
 import Navbar from "./navbar";
 import { getCookie } from '../middelwaie/cookie';
 import { jwtDecode } from 'jwt-decode';
 import { adminphone, backend_Url } from '../backend_url_return_function/backendUrl';
 
-// --- NEW: Extracted Product Card Component ---
+// --- Premium Product Card Component (Urban Drop Style) ---
 const ProductCard = ({ item, user, navigate, handleDelete }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  
-  // NEW: Add local state to manage likes instantly (Optimistic UI Update)
   const [likeCount, setLikeCount] = useState(item.likes || 0);
-  const [isLiked, setIsLiked] = useState(false); // See note below about initial state
+  const [isLiked, setIsLiked] = useState(false);
 
-  // Normalize image array
-  const imageList = item.images && item.images.length > 0 
-    ? item.images 
-    : (item.pic_url ? [item.pic_url] : ['https://via.placeholder.com/400x500?text=No+Image']);
+  const imageList = item.images?.length > 0
+    ? item.images
+    : (item.pic_url ? [item.pic_url] : ['https://placehold.co/600x800?text=URBAN+DROP']);
 
-  // Timer to change image every 5 seconds if multiple exist
   useEffect(() => {
     let timer;
     if (imageList.length > 1) {
       timer = setInterval(() => {
         setCurrentImageIndex((prev) => (prev + 1) % imageList.length);
-      }, 5000); 
+      }, 5000);
     }
     return () => clearInterval(timer);
   }, [imageList.length]);
 
-  // NEW: Function to handle the like toggle
   const handleLikeToggle = async (e) => {
-    e.stopPropagation(); // Prevents triggering other click events on the card
-    
+    e.stopPropagation();
     const token = getCookie('authToken');
     if (!token) {
       toast.error("Please log in to like products!");
       return;
     }
 
-    // 1. Optimistic Update (Change UI instantly before API call finishes)
     setIsLiked(!isLiked);
     setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
 
     try {
-      // 2. Call the backend
       const response = await axios.post(`${backend_Url}/production/toggleLikeProduct`, {
         productId: item._id,
         token: token
       });
-
-      if (response.data.success) {
-        // Sync absolute truth from backend just to be safe
-        setIsLiked(response.data.isLiked);
-      } else {
-        // If it failed on the backend logic, revert UI
+      if (!response.data.success) {
         setIsLiked(!isLiked);
         setLikeCount(prev => isLiked ? prev + 1 : prev - 1);
         toast.error(response.data.message || "Failed to update like.");
       }
     } catch (error) {
-      // If API fails completely, revert UI
       setIsLiked(!isLiked);
       setLikeCount(prev => isLiked ? prev + 1 : prev - 1);
       console.error("Error toggling like:", error);
@@ -73,155 +59,136 @@ const ProductCard = ({ item, user, navigate, handleDelete }) => {
   };
 
   const hasDiscount = item.discount && item.discount > 0;
-  const finalPrice = hasDiscount 
-      ? Math.round(item.price - (item.price * (item.discount / 100))) 
-      : item.price;
+  const finalPrice = hasDiscount
+    ? Math.round(item.price - (item.price * (item.discount / 100)))
+    : item.price;
 
   return (
     <motion.div
-      whileHover={{ y: -5 }}
-      className="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl dark:hover:shadow-gray-900/50 transition-all duration-300 border border-gray-100 dark:border-gray-700 flex flex-col relative"
+      whileHover={{ y: -8 }}
+      className="group relative bg-black/40 backdrop-blur-sm rounded-none overflow-hidden transition-all duration-500 hover:bg-black/60"
     >
-      {/* Absolute Badges: Discount & Likes */}
-      {hasDiscount && (
-          <div className="absolute top-2 left-2 z-10 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow">
-              {item.discount}% OFF
-          </div>
-      )}
-
-      {/* UPDATED: Changed from a static div to a clickable button for likes */}
-      <button 
-        onClick={handleLikeToggle}
-        className={`absolute top-2 right-2 z-10 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm text-[10px] font-bold px-2 py-1 rounded-full shadow flex items-center gap-1 transition-colors duration-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${
-          isLiked ? 'text-red-500' : 'text-gray-400 hover:text-red-500'
-        }`}
-      >
-        <svg 
-          className={`w-4 h-4 transition-transform duration-200 active:scale-75 ${isLiked ? 'fill-current' : 'fill-none stroke-current stroke-2'}`} 
-          viewBox="0 0 20 20"
-        >
-          {isLiked ? (
-             <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-          ) : (
-             <path strokeLinecap="round" strokeLinejoin="round" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
-          )}
-        </svg>
-        {likeCount}
-      </button>
-
-      {/* Image Carousel */}
-      <div className="aspect-[3/4] w-full overflow-hidden bg-gray-100 relative">
+      {/* Image Container with Overlay */}
+      <div className="aspect-[3/4] w-full overflow-hidden bg-gray-900 relative">
         <AnimatePresence mode="wait">
           <motion.img
-            key={currentImageIndex} 
-            initial={{ opacity: 0.8 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0.8 }}
-            transition={{ duration: 0.5 }}
+            key={currentImageIndex}
+            initial={{ opacity: 0.8, scale: 1 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0.8, scale: 1.05 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
             src={imageList[currentImageIndex]}
             alt={item.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
           />
         </AnimatePresence>
-        
-        {/* Indicators for multiple images */}
+
+        {/* Gradient Overlay on Hover */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+        {/* Like Button - Minimalist */}
+     
+
+        {/* Discount Badge - Neon Style */}
+        {hasDiscount && (
+          <div className="absolute top-4 left-4 z-10 bg-cyan-500 text-black text-xs font-bold px-3 py-1 tracking-wider">
+            {item.discount}% OFF
+          </div>
+        )}
+
+        {/* Image Indicators - Minimal Dots */}
         {imageList.length > 1 && (
-          <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
+          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">
             {imageList.map((_, idx) => (
-              <div 
-                key={idx} 
-                className={`h-1 rounded-full transition-all duration-300 ${idx === currentImageIndex ? 'w-3 bg-white' : 'w-1 bg-white/50'}`}
+              <div
+                key={idx}
+                className={`h-[2px] rounded-full transition-all duration-300 ${idx === currentImageIndex ? 'w-6 bg-cyan-400' : 'w-3 bg-white/40'
+                  }`}
               />
             ))}
           </div>
         )}
       </div>
-      
-      <div className="p-3 sm:p-4 flex flex-col flex-grow">
-        {/* Category & Type */}
-        <p className="text-[10px] sm:text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 line-clamp-1">
-            {item.category || 'Apparel'} • {item.type || 'General'}
+
+      {/* Product Info */}
+      <div className="p-4 flex flex-col">
+        {/* Brand / Category */}
+        <p className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-wider mb-1">
+          {item.category || 'APPAREL'} / {item.type || 'ESSENTIALS'}
         </p>
-        
+
         {/* Title */}
-        <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white flex-grow line-clamp-2 leading-tight">
+        <h3 className="text-sm font-bold text-white uppercase tracking-tight leading-tight mb-2 line-clamp-2">
           {item.title}
         </h3>
 
-        {/* Sizes Display */}
-        {item.sizes && item.sizes.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2 mb-1">
-            {item.sizes.map((size, idx) => (
-              <span key={idx} className="text-[10px] border border-gray-200 dark:border-gray-600 rounded px-1.5 py-0.5 text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50">
+        {/* Sizes - Minimalist Chip Design */}
+        {item.sizes?.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-1 mb-3">
+            {item.sizes.slice(0, 4).map((size, idx) => (
+              <span key={idx} className="text-[9px] font-mono border border-white/20 rounded px-2 py-0.5 text-white/60">
                 {size}
               </span>
             ))}
+            {item.sizes.length > 4 && (
+              <span className="text-[9px] font-mono text-white/40">+{item.sizes.length - 4}</span>
+            )}
           </div>
         )}
-        
+
         {/* Price & Action */}
-        <div className="mt-2 flex flex-col sm:flex-row justify-between sm:items-end gap-2">
+        <div className="flex items-center justify-between mt-auto pt-2">
           <div>
             {hasDiscount ? (
-              <div className="flex items-center gap-2">
-                 <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white">
-                    ₹{finalPrice}
-                 </p>
-                 <p className="text-xs sm:text-sm text-gray-400 line-through">
-                   ₹{item.price}
-                 </p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-lg font-bold text-white">₹{finalPrice}</span>
+                <span className="text-xs text-white/40 line-through">₹{item.price}</span>
               </div>
             ) : (
-              <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white">
-                ₹{item.price}
-              </p>
+              <span className="text-lg font-bold text-white">₹{item.price}</span>
             )}
           </div>
 
           {item.inStock !== false ? (
             <button
-              onClick={() => {
-                navigate('/product', {
-                  state: { 
-                    id: item._id, 
-                    images: item.images || [item.pic_url], 
-                    title: item.title, 
-                    originalPrice: item.price, 
-                    price: finalPrice, 
-                    discount: item.discount,
-                    description: item.description,
-                    brand: item.brand,
-                    sizes: item.sizes,
-                    colors: item.colors,
-                    likes: item.likes
-                  },
-                });
-              }}
-              className="flex-1 py-1.5 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-semibold rounded hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+              onClick={() => navigate('/product', {
+                state: {
+                  id: item._id,
+                  images: item.images || [item.pic_url],
+                  title: item.title,
+                  originalPrice: item.price,
+                  price: finalPrice,
+                  discount: item.discount,
+                  description: item.description,
+                  brand: item.brand,
+                  sizes: item.sizes,
+                  colors: item.colors,
+                  likes: item.likes
+                },
+              })}
+              className="px-4 py-1.5 bg-white text-black text-xs font-bold tracking-wider hover:bg-cyan-400 hover:text-black transition-all duration-300"
             >
-              Buy Now
+              SHOP NOW
             </button>
           ) : (
-            <span className='text-red-500 dark:text-red-400 text-xs sm:text-sm font-medium'> 
-              Out of Stock
-            </span>
+            <span className='text-red-400 text-xs font-mono'>SOLD OUT</span>
           )}
         </div>
 
         {/* Admin Controls */}
         {user?.phone === adminphone && (
-          <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+          <div className="flex gap-2 mt-4 pt-3 border-t border-white/10">
             <button
               onClick={() => navigate('/editfood', { state: { productData: item } })}
-              className="flex-1 py-1.5 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-semibold rounded hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+              className="flex-1 py-1.5 bg-white/10 text-green-500 text-xs font-semibold hover:bg-white/20 transition-colors"
             >
-              Edit
+              EDIT
             </button>
             <button
               onClick={() => handleDelete(item._id)}
-              className="flex-1 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-semibold rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+              className="flex-1 py-1.5 bg-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/30 transition-colors"
             >
-              Delete
+              DELETE
             </button>
           </div>
         )}
@@ -229,47 +196,39 @@ const ProductCard = ({ item, user, navigate, handleDelete }) => {
     </motion.div>
   );
 };
-// --- END Product Card Component ---
 
-const ShopPage = () => { 
+const ShopPage = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  
   const [user, setUser] = useState(null);
-  const [currentSlide, setCurrentSlide] = useState(0);
   const navigate = useNavigate();
 
-  const banners = [
-    "https://res.cloudinary.com/dr6u53c39/image/upload/v1779086454/Gemini_Generated_Image_tu33vitu33vitu33_eilbvc.png",
-    "https://res.cloudinary.com/dr6u53c39/image/upload/v1779038926/Screenshot_1948-02-27_at_10.58.29_PM_pkjzmf.png",
-    "https://res.cloudinary.com/dr6u53c39/image/upload/v1779039079/Screenshot_1948-02-27_at_11.00.58_PM_nw6mxg.png",
-    "https://res.cloudinary.com/dr6u53c39/image/upload/v1779039274/Fashion_Sale_Banner_2_peqyzr.jpg"
-  ];
-
-  const popularCategories = [
-    { name: "All", image: "https://res.cloudinary.com/dr6u53c39/image/upload/v1779038347/Screenshot_1948-02-27_at_10.48.21_PM_xwuomo.png" }, 
-    { name: "Men", image: "https://res.cloudinary.com/dr6u53c39/image/upload/v1779037772/Screenshot_1948-02-27_at_10.34.59_PM_nxs0e6.png" },
-    { name: "Women", image: "https://res.cloudinary.com/dr6u53c39/image/upload/v1779037942/Screenshot_1948-02-27_at_10.42.12_PM_ybrubq.png" },
-    { name: "Kids", image: "https://res.cloudinary.com/dr6u53c39/image/upload/v1779038013/Screenshot_1948-02-27_at_10.43.22_PM_gk5sfi.png" },
-    { name: "Unisex", image: "https://cdn-icons-png.flaticon.com/512/4663/4663080.png" }
-  ];
-
-  useEffect(() => {
-    const slideTimer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % banners.length);
-    }, 4000); 
-    return () => clearInterval(slideTimer);
-  }, [banners.length]);
+  // Categories with counts
+  const [categories, setCategories] = useState([
+    { name: "All", count: 0, image: null },
+    { name: "Men", count: 0, image: null },
+    { name: "Unisex", count: 0, image: null }
+  ]);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         const response = await axios.get(`${backend_Url}/production/getallfood`);
         if (response.data.status) {
-          setProducts(response.data.message);
+          const productList = [...response.data.message].reverse();
+          setProducts(productList);
+
+          // Update category counts
+          const menCount = productList.filter(p => p.category === "Men").length;
+          const unisexCount = productList.filter(p => p.category === "Unisex").length;
+          setCategories([
+            { name: "All", count: productList.length, image: null },
+            { name: "Men", count: menCount, image: null },
+            { name: "Unisex", count: unisexCount, image: null }
+          ]);
         } else {
           throw new Error('Failed to fetch products');
         }
@@ -290,11 +249,7 @@ const ShopPage = () => {
       if (token) {
         try {
           const decoded = jwtDecode(token);
-          setUser({
-            name: decoded.name,
-            phone: decoded.phone,
-            img_url: decoded.img_url
-          });
+          setUser({ name: decoded.name, phone: decoded.phone, img_url: decoded.img_url });
         } catch (error) {
           console.error('Error decoding token:', error);
         }
@@ -308,7 +263,6 @@ const ShopPage = () => {
     if (!isConfirmed) return;
 
     const token = getCookie('authToken');
-
     if (!token) {
       toast.error("Authentication token not found. Please log in.");
       return;
@@ -318,7 +272,6 @@ const ShopPage = () => {
       const response = await axios.delete(`${backend_Url}/production/delete/product`, {
         data: { token: token, _id: id }
       });
-
       if (response.status === 200) {
         toast.success("Product deleted successfully!");
         setProducts(prevItems => prevItems.filter(item => item._id !== id));
@@ -331,154 +284,146 @@ const ShopPage = () => {
     }
   };
 
+  const filteredItems = products.filter(item => {
+    const matchesSearch = item.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.brand?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  // Skeleton Loader
   const ProductSkeleton = () => (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700">
-      <div className="aspect-[3/4] bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-        <svg className="animate-spin h-8 w-8 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-      </div>
-      <div className="p-4 sm:p-5">
-        <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded-full w-1/3 mb-2 animate-pulse"></div>
-        <div className="h-5 bg-gray-200 dark:bg-gray-600 rounded-full w-3/4 mb-4 animate-pulse"></div>
-        <div className="flex justify-between items-center mt-4">
-          <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded-full w-1/4 animate-pulse"></div>
-          <div className="h-10 bg-gray-200 dark:bg-gray-600 rounded-xl w-24 animate-pulse"></div>
+    <div className="bg-black/40 animate-pulse">
+      <div className="aspect-[3/4] bg-gray-800" />
+      <div className="p-4 space-y-3">
+        <div className="h-2 bg-gray-700 w-1/3" />
+        <div className="h-4 bg-gray-700 w-3/4" />
+        <div className="h-3 bg-gray-700 w-1/2" />
+        <div className="flex justify-between items-center pt-2">
+          <div className="h-6 bg-gray-700 w-1/4" />
+          <div className="h-8 bg-gray-700 w-20" />
         </div>
       </div>
     </div>
   );
 
-  const filteredItems = products.filter(item => {
-    const matchesSearch = item.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          item.brand?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-
   return (
-    <div className="min-h-screen w-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="h-full w-screen bg-black text-white">
       <Navbar />
-      <Toaster position="top-right" />
+      <Toaster position="top-right" toastOptions={{
+        style: { background: '#1a1a1a', color: '#fff', border: '1px solid #333' }
+      }} />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      {/* Hero Section - Minimalist with diagonal pattern */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-black via-gray-900 to-black border-b border-white/10">
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute top-0 left-0 w-full h-full bg-[linear-gradient(45deg,transparent_25%,rgba(0,255,255,0.05)_50%,transparent_75%)] bg-[length:4rem_4rem]" />
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24 relative">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-center"
+          >
+            <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter bg-gradient-to-r from-white via-cyan-400 to-white bg-clip-text text-transparent">
+              NEXT WARDROBE
+            </h1>
+            <p className="text-gray-400 mt-4 max-w-2xl mx-auto font-mono text-sm">
+              Premium streetwear essentials. Built for the bold.
+            </p>
+          </motion.div>
+        </div>
+      </div>
 
-        {/* Search Bar */}
-        <div className="mb-10 max-w-lg mx-auto">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <svg className="h-5 w-5 text-gray-400 dark:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-              </svg>
-            </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Search Bar - Minimalist */}
+        <div className="mb-12 max-w-md mx-auto">
+          <div className="relative group">
             <input
               type="text"
-              className="block w-full pl-11 pr-4 py-3.5 border border-gray-200 dark:border-gray-700 rounded-full leading-5 bg-white dark:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-300 dark:focus:ring-emerald-600 focus:border-emerald-500 dark:focus:border-emerald-500 text-sm shadow-inner transition-colors"
-              placeholder="Search by title or brand..."
+              className="w-full bg-white/5 border border-white/10 rounded-none px-5 py-3.5 text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-400 focus:bg-black transition-all duration-300 font-mono text-sm"
+              placeholder="SEARCH PRODUCTS..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+            <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
           </div>
         </div>
 
-        {/* --- Sliding Banner Section --- */}
-        <div className="mb-12 relative w-full h-48 sm:h-64 md:h-80 overflow-hidden rounded-2xl shadow-lg">
-          {banners.map((url, idx) => (
-            <img
-              key={idx}
-              src={url}
-              alt={`Banner ${idx + 1}`}
-              className={`absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-1000 ${
-                idx === currentSlide ? 'opacity-100' : 'opacity-0'
-              }`}
-            />
-          ))}
-          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
-            {banners.map((_, idx) => (
+        {/* Category Filters - Pill Style with Counters */}
+        <div className="mb-12">
+          <div className="flex flex-wrap gap-3 justify-center">
+            {categories.map((cat, idx) => (
               <button
                 key={idx}
-                onClick={() => setCurrentSlide(idx)}
-                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                  idx === currentSlide ? 'bg-white w-6' : 'bg-white/60 hover:bg-white/80'
-                }`}
-                aria-label={`Go to slide ${idx + 1}`}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* --- Category Filters --- */}
-        <div className="mb-8">
-          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-            {popularCategories.map((cat, idx) => (
-              <div 
-                key={idx} 
                 onClick={() => setSelectedCategory(cat.name)}
-                className={`flex items-center gap-3 bg-white dark:bg-gray-800 p-2 pr-6 rounded-xl shadow-sm border-2 min-w-max cursor-pointer transition-all duration-200
-                  ${selectedCategory === cat.name 
-                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' 
-                    : 'border-transparent hover:border-emerald-200 dark:border-gray-700'
-                  }`}
+                className={`px-6 py-2.5 text-sm font-mono font-bold tracking-wider transition-all duration-300 ${selectedCategory === cat.name
+                    ? 'bg-cyan-500 text-black border-cyan-500'
+                    : 'bg-transparent text-gray-400 border-white/20 hover:border-cyan-500/50 hover:text-white'
+                  } border`}
               >
-                <img 
-                  src={cat.image} 
-                  alt={cat.name} 
-                  className="w-14 h-14 rounded-lg object-contain bg-gray-50 dark:bg-gray-700" 
-                />
-                <span className={`font-bold text-lg ${
-                    selectedCategory === cat.name 
-                      ? 'text-emerald-700 dark:text-emerald-400' 
-                      : 'text-gray-800 dark:text-gray-200'
-                  }`}>
-                  {cat.name}
-                </span>
-              </div>
+                {cat.name} <span className="ml-2 text-xs opacity-70">({cat.count})</span>
+              </button>
             ))}
           </div>
         </div>
 
-        {/* Product Grid / Loading / Error */}
+        {/* Results Count */}
+        <div className="mb-6 flex justify-between items-center border-b border-white/10 pb-4">
+          <p className="text-xs font-mono text-gray-500 tracking-wider">
+            {filteredItems.length} PRODUCTS FOUND
+          </p>
+          {selectedCategory !== 'All' && (
+            <button
+              onClick={() => setSelectedCategory('All')}
+              className="text-xs font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
+            >
+              CLEAR FILTERS
+            </button>
+          )}
+        </div>
+
+        {/* Product Grid */}
         {loading ? (
-          <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5">
-            {[...Array(10)].map((_, i) => <ProductSkeleton key={i} />)}
+          <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
+            {[...Array(8)].map((_, i) => <ProductSkeleton key={i} />)}
           </div>
         ) : error ? (
-          <div className="text-center py-12 bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-200 dark:border-red-800/30">
-            <h3 className="text-lg font-medium text-red-800 dark:text-red-400">Oops!</h3>
-            <p className="mt-2 text-red-600 dark:text-red-300">{error}</p>
+          <div className="text-center py-20 border border-red-500/30 bg-red-500/5">
+            <p className="text-red-400 font-mono">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-6 py-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+            >
+              RETRY
+            </button>
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">No items found</h3>
-            <p className="mt-2 text-gray-500 dark:text-gray-400">
-                {selectedCategory !== 'All' 
-                  ? `There are currently no products in the "${selectedCategory}" category.` 
-                  : 'Try a different search term.'}
+          <div className="text-center py-20 border border-white/10">
+            <h3 className="text-xl font-bold uppercase tracking-wider">No products found</h3>
+            <p className="mt-2 text-gray-500 font-mono text-sm">
+              {selectedCategory !== 'All'
+                ? `No items in "${selectedCategory}" category`
+                : 'Try adjusting your search'}
             </p>
-            {selectedCategory !== 'All' && (
-               <button 
-                 onClick={() => setSelectedCategory('All')}
-                 className="mt-4 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition"
-               >
-                 View All Products
-               </button>
-            )}
           </div>
         ) : (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.4 }}
-            className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5" 
+            transition={{ duration: 0.5 }}
+            className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4"
           >
             {filteredItems.map((item) => (
-              <ProductCard 
-                key={item._id} 
-                item={item} 
-                user={user} 
-                navigate={navigate} 
-                handleDelete={handleDelete} 
+              <ProductCard
+                key={item._id}
+                item={item}
+                user={user}
+                navigate={navigate}
+                handleDelete={handleDelete}
               />
             ))}
           </motion.div>

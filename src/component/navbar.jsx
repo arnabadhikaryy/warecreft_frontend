@@ -8,6 +8,7 @@ import { adminphone } from '../backend_url_return_function/backendUrl';
 const Navbar = () => {
   const [user, setUser] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,13 +29,21 @@ const Navbar = () => {
     };
 
     checkAuth();
-    // Optional: Add event listener for token changes
     window.addEventListener('storage', checkAuth);
-    return () => window.removeEventListener('storage', checkAuth);
+    
+    // Handle scroll effect
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    
+    return () => {
+      window.removeEventListener('storage', checkAuth);
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   const handleLogout = () => {
-    // Clear the auth token cookie
     document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     setUser(null);
     setDropdownOpen(false);
@@ -42,70 +51,85 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 shadow-sm sticky top-0 z-50 transition-colors duration-300">
+    <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${
+      scrolled 
+        ? 'bg-black/95 backdrop-blur-md border-b border-black/10 shadow-2xl' 
+        : 'bg-black/80 backdrop-blur-sm border-b border-black/5'
+    }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+        <div className="flex justify-between items-center h-16 lg:h-20">
 
           {/* Left side - Logo/Brand */}
           <div className="flex items-center gap-3">
-            <img
-              src="https://res.cloudinary.com/dr6u53c39/image/upload/v1779084676/file_000000009cc47207ac5fe9f053f59bde_bfhh1z.png"
-              alt="Logo"
-              className="w-12 h-12  object-cover border-2 border-emerald-500"
-            />
-            <Link to="/" className="flex items-center gap-2 text-2xl font-serif italic text-gray-900 dark:text-white hover:text-emerald-600 transition-colors">
-              Next<span className="not-italic font-bold border-b-2 border-emerald-500">Wardrobe</span>
+            <div className="relative">
+              <img
+                src="https://res.cloudinary.com/dr6u53c39/image/upload/v1779084676/file_000000009cc47207ac5fe9f053f59bde_bfhh1z.png"
+                alt="Logo"
+                className="w-10 h-10 lg:w-12 lg:h-12 object-cover"
+              />
+              <div className="absolute -inset-0.5 bg-cyan-500 blur opacity-0 group-hover:opacity-30 transition-opacity"></div>
+            </div>
+            <Link to="/" className="group flex items-center gap-1">
+              <span className="text-xl lg:text-2xl font-black uppercase tracking-tighter text-white">
+                NEXT
+              </span>
+              <span className="text-xl lg:text-2xl font-black uppercase tracking-tighter text-cyan-400">
+                WARDROBE
+              </span>
             </Link>
           </div>
 
           {/* Center - Navigation Links */}
-          <div className="hidden md:flex items-center text-sm font-medium text-gray-700 dark:text-gray-200 space-x-6 lg:space-x-8">
-            <NavLink to="/" text="Home" />
-
+          <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
+            <NavLink to="/" text="HOME" />
+            
             {user && (
               <>
-                <NavLink to="/profile" text="Account" />
-                <NavLink to="/cart" text="Cart"/>
-                <NavLink to="/orderhistory" text="Your Orders" />
-                <NavLink to="/profile/edit" text="Edit Profile" />
+                <NavLink to="/profile" text="ACCOUNT" />
+                <NavLink to="/cart" text="CART" />
+                <NavLink to="/orderhistory" text="ORDERS" />
+                <NavLink to="/profile/edit" text="EDIT" />
               </>
             )}
 
-            {/* Admin Links - Grouped with a subtle left border */}
+            {/* Admin Links */}
             {user?.phone === adminphone && (
-              <div className="flex items-center gap-6 pl-6 lg:pl-8 border-l border-gray-200 dark:border-gray-700">
-                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest hidden lg:block">
-                  Admin
-                </span>
-                <NavLink to="/addfood" text="Add Product" />
-                <NavLink to="/allusersorders" text="All Orders" />
-              </div>
+              <>
+                <div className="w-px h-5 bg-white/20 mx-2"></div>
+                <NavLink to="/addfood" text="ADD" className="text-cyan-400 hover:text-cyan-300" />
+                <NavLink to="/allusersorders" text="ALL ORDERS" className="text-cyan-400 hover:text-cyan-300" />
+              </>
             )}
           </div>
 
           {/* Right side - Auth Section */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex items-center gap-4">
             {user ? (
-              <div className="flex items-center gap-4 ml-3">
-                {/* User Indicator / Simple Profile Button */}
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-full transition-colors duration-300">
-                  <span className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-xs">
+              <div className="flex items-center gap-4">
+                {/* User Profile Button */}
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="flex items-center gap-2 px-3 py-1.5 border border-white/20 hover:border-cyan-400 transition-all duration-300 group"
+                >
+                  <div className="w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center text-black font-black text-xs uppercase">
                     {user?.name?.charAt(0) || 'U'}
+                  </div>
+                  <span className="text-xs font-mono font-bold text-black/80 group-hover:text-cyan-400 tracking-wider">
+                    {user?.name?.split(' ')[0]?.toUpperCase() || 'USER'}
                   </span>
-                  <span>{user?.name?.split(' ')[0] || 'User'}</span>
-                </div>
+                </button>
 
                 <button
                   onClick={handleLogout}
-                  className="text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
+                  className="text-xs font-mono font-bold text-black/60 hover:text-red-400 tracking-wider transition-colors uppercase"
                 >
-                  Logout
+                  EXIT
                 </button>
               </div>
             ) : (
               <Link
                 to="/login"
-                className="ml-4 inline-flex items-center px-6 py-2 border-2 border-emerald-600 dark:border-emerald-500 text-sm font-bold tracking-wide rounded-none text-emerald-600 dark:text-emerald-500 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-500 dark:hover:text-white transition-all duration-300"
+                className="px-6 py-2 border border-cyan-500 text-cyan-400 text-xs font-bold tracking-wider uppercase hover:bg-cyan-500 hover:text-black transition-all duration-300"
               >
                 LOGIN
               </Link>
@@ -116,16 +140,16 @@ const Navbar = () => {
           <div className="md:hidden flex items-center">
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500"
+              className="relative w-10 h-10 flex items-center justify-center border text-black border-black/20 hover:border-cyan-400 transition-all duration-300 group"
               aria-expanded={dropdownOpen}
             >
-              <span className="sr-only">Open main menu</span>
+              <div className="absolute inset-0 bg-cyan-500/0 group-hover:bg-cyan-500/10 transition-colors"></div>
               {dropdownOpen ? (
-                <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-5 w-5 text-black group-hover:text-cyan-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               ) : (
-                <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-5 w-5 text-black group-hover:text-cyan-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               )}
@@ -134,44 +158,46 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile menu - Premium Design */}
       <AnimatePresence>
         {dropdownOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden"
+            transition={{ duration: 0.3 }}
+            className="md:hidden bg-black/95 backdrop-blur-md border-t border-blue-50/10 overflow-hidden"
           >
-            <div className="pt-2 pb-4 space-y-1 px-2 sm:px-3">
-              <MobileNavLink to="/" text="Home" onClick={() => setDropdownOpen(false)} />
+            <div className="py-4 px-4 space-y-1">
+              <MobileNavLink to="/" text="HOME" onClick={() => setDropdownOpen(false)} />
 
               {user && (
                 <>
-                  <MobileNavLink to="/cart" text="Cart" onClick={() => setDropdownOpen(false)} />
-                  <MobileNavLink to="/profile" text="Your Profile" onClick={() => setDropdownOpen(false)} />
-                  <MobileNavLink to="/profile/edit" text="Edit Profile" onClick={() => setDropdownOpen(false)} />
-                  <MobileNavLink to="/orderhistory" text="Your Orders" onClick={() => setDropdownOpen(false)} />
+                  <MobileNavLink to="/cart" text="CART" onClick={() => setDropdownOpen(false)} />
+                  <MobileNavLink to="/profile" text="PROFILE" onClick={() => setDropdownOpen(false)} />
+                  <MobileNavLink to="/profile/edit" text="EDIT PROFILE" onClick={() => setDropdownOpen(false)} />
+                  <MobileNavLink to="/orderhistory" text="ORDERS" onClick={() => setDropdownOpen(false)} />
 
-                  {/* Added missing Admin Links to mobile */}
-                  {user?.phone == adminphone && (
-                    <div className="border-t border-gray-100 dark:border-gray-800 my-2 pt-2">
-                      <p className="px-3 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Admin</p>
-                      <MobileNavLink to="/addfood" text="Add product" onClick={() => setDropdownOpen(false)} />
-                      <MobileNavLink to="/allusersorders" text="All Users Orders" onClick={() => setDropdownOpen(false)} />
-                    </div>
+                  {/* Admin Links Mobile */}
+                  {user?.phone === adminphone && (
+                    <>
+                      <div className="h-px bg-white/10 my-3"></div>
+                      <p className="px-3 text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-wider mb-2">Admin</p>
+                      <MobileNavLink to="/addfood" text="ADD PRODUCT" onClick={() => setDropdownOpen(false)} />
+                      <MobileNavLink to="/allusersorders" text="ALL ORDERS" onClick={() => setDropdownOpen(false)} />
+                    </>
                   )}
                 </>
               )}
 
-              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <div className="pt-4 mt-4 border-t border-white/10">
                 {!user ? (
                   <Link
                     to="/login"
                     onClick={() => setDropdownOpen(false)}
-                    className="block w-full text-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 transition-colors"
+                    className="block w-full text-center px-4 py-3 border border-cyan-500 text-cyan-400 text-sm font-bold tracking-wider uppercase hover:bg-cyan-500 hover:text-black transition-all duration-300"
                   >
-                    Login
+                    LOGIN
                   </Link>
                 ) : (
                   <button
@@ -179,9 +205,9 @@ const Navbar = () => {
                       handleLogout();
                       setDropdownOpen(false);
                     }}
-                    className="block w-full text-left px-3 py-2 text-base font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                    className="block w-full text-left px-3 py-3 text-sm font-mono font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors uppercase tracking-wider"
                   >
-                    Sign out
+                    SIGN OUT
                   </button>
                 )}
               </div>
@@ -193,22 +219,24 @@ const Navbar = () => {
   );
 };
 
-// Reusable NavLink component for desktop
-const NavLink = ({ to, text }) => (
+// Reusable NavLink component for desktop - Premium Streetwear Style
+const NavLink = ({ to, text, className = "" }) => (
   <Link
     to={to}
-    className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-emerald-500 dark:hover:border-emerald-400 transition-colors"
+    className={`relative px-3 py-2 text-[11px] font-mono font-bold tracking-wider uppercase transition-all duration-300 
+      text-white/60 hover:text-cyan-400 group ${className}`}
   >
     {text}
+    <span className="absolute bottom-0 left-1/2 w-0 h-px bg-cyan-400 group-hover:w-full group-hover:left-0 transition-all duration-300"></span>
   </Link>
 );
 
-// Reusable NavLink component for mobile
+// Reusable NavLink component for mobile - Premium Style
 const MobileNavLink = ({ to, text, onClick }) => (
   <Link
     to={to}
     onClick={onClick}
-    className="block pl-3 pr-4 py-2 border-l-4 border-emerald-500 dark:border-emerald-400 text-base font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 transition-colors"
+    className="block px-3 py-3 text-xs font-mono font-bold tracking-wider uppercase text-white/70 hover:text-cyan-400 hover:bg-white/5 transition-all duration-300 border-l-2 border-transparent hover:border-cyan-400"
   >
     {text}
   </Link>

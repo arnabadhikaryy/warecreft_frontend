@@ -30,7 +30,7 @@ function Product() {
     likes = 0
   } = location.state || {};
 
-  const imageList = images && images.length > 0 ? images : (url ? [url] : ['https://via.placeholder.com/600x800?text=No+Image']);
+  const imageList = images && images.length > 0 ? images : (url ? [url] : ['https://placehold.co/600x800?text=URBAN+DROP']);
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState('');
@@ -46,15 +46,11 @@ function Product() {
   const [likeCount, setLikeCount] = useState(likes);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  // State for Reviews
   const [reviews, setReviews] = useState([]);
   const [reviewStats, setReviewStats] = useState({ averageRating: 0, totalReviews: 0 });
   const [loadingReviews, setLoadingReviews] = useState(true);
 
-  // NEW: State for Fullscreen Image Viewer
   const [selectedImage, setSelectedImage] = useState(null);
-
-  // NEW: State for Cart functionality
   const [isInCart, setIsInCart] = useState(false);
   const [cartLoading, setCartLoading] = useState(false);
 
@@ -69,7 +65,6 @@ function Product() {
       try {
         setUserToken(token);
         const decoded = jwtDecode(token);
-
         if (decoded && decoded.phone) {
           setUserPhone(decoded.phone);
         } else {
@@ -83,59 +78,30 @@ function Product() {
     }
   }, [navigate, location.state]);
 
-  // Check if product is in cart
   useEffect(() => {
     const checkCartStatus = async () => {
       if (!userToken || !id) return;
-
       try {
-        const response = await axios.post(
-          `${backend_Url}/user/check/cart`,
-          {
-            productId: id,
-            token: userToken
-          },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-
-        if (response.data.inCart) {
-          setIsInCart(true);
-        }
+        const response = await axios.post(`${backend_Url}/user/check/cart`, {
+          productId: id,
+          token: userToken
+        });
+        if (response.data.inCart) setIsInCart(true);
       } catch (error) {
         console.error("Error checking cart status:", error);
       }
     };
-
     checkCartStatus();
   }, [userToken, id]);
 
   useEffect(() => {
     const fetchReviews = async () => {
       if (!id) return;
-
       try {
-        const response = await axios.post(
-          `${backend_Url}/production/getProductReviews`,
-          { productId: id },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-
+        const response = await axios.post(`${backend_Url}/production/getProductReviews`, { productId: id });
         if (response.data.success) {
           setReviews(response.data.reviews || []);
-          setReviewStats(
-            response.data.stats || {
-              averageRating: 0,
-              totalReviews: 0,
-            }
-          );
+          setReviewStats(response.data.stats || { averageRating: 0, totalReviews: 0 });
         }
       } catch (error) {
         console.error("Failed to fetch reviews:", error);
@@ -151,16 +117,13 @@ function Product() {
       toast.error("Please log in to like products!");
       return;
     }
-
     setIsLiked(!isLiked);
     setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
-
     try {
       const response = await axios.post(`${backend_Url}/production/toggleLikeProduct`, {
         productId: id,
         token: userToken
       });
-
       if (response.data.success) {
         setIsLiked(response.data.isLiked);
       } else {
@@ -176,29 +139,18 @@ function Product() {
     }
   };
 
-  // NEW: Handle Add to Cart
   const handleAddToCart = async () => {
     if (!userToken) {
       toast.error("Please log in to add items to cart!");
       navigate('/login');
       return;
     }
-
     setCartLoading(true);
     try {
-      const response = await axios.post(
-        `${backend_Url}/user/add/cart`,
-        {
-          productId: id,
-          token: userToken
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
+      const response = await axios.post(`${backend_Url}/user/add/cart`, {
+        productId: id,
+        token: userToken
+      });
       if (response.data.message.includes("successfully")) {
         setIsInCart(true);
         toast.success("Product added to cart!");
@@ -213,29 +165,18 @@ function Product() {
     }
   };
 
-  // NEW: Handle Remove from Cart
   const handleRemoveFromCart = async () => {
     if (!userToken) {
       toast.error("Please log in!");
       navigate('/login');
       return;
     }
-
     setCartLoading(true);
     try {
-      const response = await axios.post(
-        `${backend_Url}/user/remove/cart`,
-        {
-          productId: id,
-          token: userToken
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
+      const response = await axios.post(`${backend_Url}/user/remove/cart`, {
+        productId: id,
+        token: userToken
+      });
       if (response.data.message.includes("successfully")) {
         setIsInCart(false);
         toast.success("Product removed from cart!");
@@ -250,55 +191,42 @@ function Product() {
     }
   };
 
-
-
   const handleOnlinePayment = async () => {
-    if (!validateSelection()) return; // Ensure size/color are picked
-
+    if (!validateSelection()) return;
     if (!userPhone) {
       toast.error('Please login to place an order');
       navigate('/login');
       return;
     }
-
     setLoading(true);
     try {
-      const cashfree = await load({
-        mode: payment_mode // Change to "production" when live
-      });
-
+      const cashfree = await load({ mode: payment_mode });
       const orderResponse = await axios.post(`${backend_Url}/api/v1/orders/payment`, {
         amount: price * quantity,
         name: title,
         phone: userPhone,
         orderID: id
       });
-
       if (orderResponse.data.success) {
         let checkoutOptions = {
           paymentSessionId: orderResponse.data.payment_session_id,
           redirectTarget: "_modal",
         };
-
         cashfree.checkout(checkoutOptions).then(async (result) => {
           if (result.error) {
             toast.error(result.error.message || "Payment cancelled");
             setLoading(false);
           }
-
           if (result.paymentDetails) {
             toast.loading("Verifying payment...");
-
             const verifyResponse = await axios.post(`${backend_Url}/api/v1/orders/verify`, {
               cf_order_id: orderResponse.data.order_id,
               userPhone: userPhone,
               foodOrderID: id,
-              price: price, // Send base price
-              quantity: quantity // Send quantity
+              price: price,
+              quantity: quantity
             });
-
             toast.dismiss();
-
             if (verifyResponse.data.success) {
               toast.success("Order placed successfully!");
               navigate('/ordersuccess');
@@ -319,11 +247,6 @@ function Product() {
     }
   };
 
-
-
-
-
-
   const validateSelection = () => {
     if (sizes.length > 0 && !selectedSize) {
       toast.error('Please select a size');
@@ -343,27 +266,21 @@ function Product() {
 
   const handleCashOnDelivery = async () => {
     setShowConfirmModal(false);
-
     if (!userPhone) {
       toast.error('Please login to place an order');
       navigate('/login');
       return;
     }
-
     setLoadingCod(true);
     try {
-      const response = await axios.post(
-        `${backend_Url}/production/order`,
-        {
-          token: userToken,
-          orderID: id,
-          after_discount_final_price: price,
-          quantity: quantity,
-          selectedSize: selectedSize,
-          selectedColor: selectedColor
-        }
-      );
-
+      const response = await axios.post(`${backend_Url}/production/order`, {
+        token: userToken,
+        orderID: id,
+        after_discount_final_price: price,
+        quantity: quantity,
+        selectedSize: selectedSize,
+        selectedColor: selectedColor
+      });
       if (response.data.status) {
         toast.success(response.data.message || 'Order placed successfully.');
         navigate('/ordersuccess');
@@ -391,7 +308,7 @@ function Product() {
         {[1, 2, 3, 4, 5].map((star) => (
           <svg
             key={star}
-            className={`w-4 h-4 ${star <= Math.round(rating) ? 'text-yellow-400' : 'text-gray-300'}`}
+            className={`w-4 h-4 ${star <= Math.round(rating) ? 'text-yellow-400' : 'text-gray-600'}`}
             fill="currentColor"
             viewBox="0 0 20 20"
           >
@@ -405,11 +322,13 @@ function Product() {
   if (!location.state) return null;
 
   return (
-    <div className="min-h-screen w-screen bg-white flex flex-col relative font-sans">
+    <div className="h-full w-screen bg-black text-white font-sans">
       <Navbar />
-      <Toaster position="top-right" />
+      <Toaster position="top-right" toastOptions={{
+        style: { background: '#1a1a1a', color: '#fff', border: '1px solid #333' }
+      }} />
 
-      {/* --- NEW: Fullscreen Image Modal --- */}
+      {/* Fullscreen Image Modal */}
       <AnimatePresence>
         {selectedImage && (
           <motion.div
@@ -417,18 +336,16 @@ function Product() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setSelectedImage(null)}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 sm:p-8 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 sm:p-8"
           >
             <button
               onClick={() => setSelectedImage(null)}
-              className="absolute top-4 right-4 sm:top-8 sm:right-8 text-red-700 bg-red-200 hover:bg-white/20 rounded-full p-2 transition-colors z-50"
-              title="Close image"
+              className="absolute top-4 right-4 sm:top-8 sm:right-8 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors z-50"
             >
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-
             <motion.img
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
@@ -436,47 +353,49 @@ function Product() {
               src={selectedImage}
               alt="Fullscreen view"
               onClick={(e) => e.stopPropagation()}
-              className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+              className="max-w-full max-h-[90vh] object-contain"
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* --- Confirmation Modal --- */}
+      {/* Confirmation Modal */}
       <AnimatePresence>
         {showConfirmModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-2xl p-6 md:p-8 max-w-sm w-full shadow-2xl"
+              className="bg-black border border-white/20 rounded-none p-6 md:p-8 max-w-sm w-full shadow-2xl"
             >
-              <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+              <div className="w-12 h-12 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center mb-4">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                </svg>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Confirm Order</h3>
+              <h3 className="text-2xl font-bold uppercase tracking-tighter text-white mb-2">Confirm Order</h3>
 
-              <div className="bg-gray-50 p-4 rounded-xl mb-6 text-sm text-gray-700">
-                <p className="font-semibold text-base mb-1">{quantity}x {title}</p>
-                {selectedSize && <p>Size: <span className="font-medium">{selectedSize}</span></p>}
-                {selectedColor && <p>Color: <span className="font-medium">{selectedColor}</span></p>}
-                <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between items-center font-bold text-lg">
-                  <span>Total to Pay:</span>
-                  <span className="text-emerald-600">₹{price * quantity}</span>
+              <div className="bg-white/5 p-4 mb-6 text-sm text-gray-300 border border-white/10">
+                <p className="font-semibold text-base mb-1 text-white">{quantity}x {title}</p>
+                {selectedSize && <p>Size: <span className="font-medium text-cyan-400">{selectedSize}</span></p>}
+                {selectedColor && <p>Color: <span className="font-medium text-cyan-400">{selectedColor}</span></p>}
+                <div className="mt-3 pt-3 border-t border-white/10 flex justify-between items-center font-bold text-lg">
+                  <span>Total:</span>
+                  <span className="text-cyan-400">₹{price * quantity}</span>
                 </div>
               </div>
 
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowConfirmModal(false)}
-                  className="flex-1 py-3 px-4 rounded-xl border-2 border-gray-200 text-red-700 font-bold hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                  className="flex-1 py-3 px-4 border border-white/20 text-white/80 font-bold hover:bg-white/10 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCashOnDelivery}
-                  className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 text-blue-700 font-bold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200"
+                  className="flex-1 py-3 px-4 bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition-colors"
                 >
                   Confirm COD
                 </button>
@@ -486,19 +405,19 @@ function Product() {
         )}
       </AnimatePresence>
 
-      <div className="flex-grow flex justify-center py-8 px-4 sm:px-6 lg:px-8">
+      <div className="flex-grow flex justify-center py-12 px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="max-w-6xl w-full bg-white rounded-3xl overflow-hidden"
+          className="max-w-7xl w-full"
         >
-          {/* Main Grid Layout for E-commerce */}
+          {/* Main Grid */}
           <div className="lg:grid lg:grid-cols-2 lg:gap-12">
 
-            {/* LEFT: Image Gallery Section */}
+            {/* LEFT: Image Gallery */}
             <div className="flex flex-col gap-4">
-              <div className="relative aspect-[3/4] lg:aspect-[4/5] w-full rounded-2xl bg-gray-100 overflow-hidden border border-gray-100">
+              <div className="relative aspect-[3/4] lg:aspect-[4/5] w-full bg-gray-900 overflow-hidden border border-white/10">
                 <AnimatePresence mode="wait">
                   <motion.img
                     key={currentImageIndex}
@@ -506,57 +425,71 @@ function Product() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="absolute inset-0 w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full object-cover cursor-zoom-in"
                     src={imageList[currentImageIndex]}
                     alt={`${title} - view ${currentImageIndex + 1}`}
+                    onClick={() => setSelectedImage(imageList[currentImageIndex])}
                   />
                 </AnimatePresence>
+
+                {/* Image indicators */}
+                {imageList.length > 1 && (
+                  <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">
+                    {imageList.map((_, idx) => (
+                      <div
+                        key={idx}
+                        className={`h-[2px] rounded-full transition-all duration-300 ${idx === currentImageIndex ? 'w-6 bg-cyan-400' : 'w-3 bg-white/40'
+                          }`}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
 
               {imageList.length > 1 && (
-                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex gap-3 overflow-x-auto pb-2">
                   {imageList.map((imgSrc, idx) => (
                     <button
                       key={idx}
                       onClick={() => setCurrentImageIndex(idx)}
-                      className={`relative flex-shrink-0 w-20 h-24 sm:w-24 sm:h-32 rounded-xl overflow-hidden border-2 transition-all duration-200
-                         ${currentImageIndex === idx ? 'border-emerald-500 shadow-md' : 'border-transparent hover:border-gray-300'}
+                      className={`relative flex-shrink-0 w-20 h-24 sm:w-24 sm:h-32 overflow-hidden border-2 transition-all duration-200
+                         ${currentImageIndex === idx ? 'border-cyan-400' : 'border-white/20 hover:border-white/40'}
                        `}
                     >
                       <img src={imgSrc} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
-                      {currentImageIndex !== idx && <div className="absolute inset-0 bg-white/40"></div>}
+                      {currentImageIndex !== idx && <div className="absolute inset-0 bg-black/50"></div>}
                     </button>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* RIGHT: Product Details Section */}
+            {/* RIGHT: Product Details */}
             <div className="py-6 lg:py-0 flex flex-col">
 
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold text-gray-400 tracking-widest uppercase">
-                  {brand || 'NextWardrobe'}
+                <span className="text-xs font-mono font-bold text-cyan-400 tracking-wider uppercase">
+                  {brand || 'NEXT WARDROBE'}
                 </span>
-                <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-green-100 text-green-800 uppercase tracking-wider">
+                <span className="inline-flex items-center px-2.5 py-1 text-[10px] font-bold border border-cyan-500/50 text-cyan-400 uppercase tracking-wider">
                   In Stock
                 </span>
               </div>
 
               <div className="flex items-start justify-between gap-4 mb-2">
-                <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight leading-tight">
+                <p className="text-2xl font-black uppercase tracking-tighter text-white leading-tight">
                   {title}
-                </h1>
+                </p>
 
-                <div className="flex flex-col-reverse gap-2">
-                  {/* NEW: Add to Cart / Remove from Cart Button */}
+                <div className="flex flex-col gap-2">
+                  {/* Cart Button */}
                   <button
                     onClick={isInCart ? handleRemoveFromCart : handleAddToCart}
                     disabled={cartLoading}
-                    className={`flex-shrink-0 p-3 rounded-full flex flex-col items-center justify-center transition-all shadow-sm border
+                    className={`flex-shrink-0 p-3 flex flex-col items-center justify-center transition-all border
                       ${isInCart
-                        ? 'bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100'
-                        : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100'
+                        ? 'bg-white/10 border-white/20 text-cyan-400 hover:bg-white/20'
+                        : 'bg-white/5 border-white/10 text-black hover:text-red-600 hover:bg-white/10'
                       }
                       ${cartLoading ? 'opacity-50 cursor-not-allowed' : ''}
                     `}
@@ -567,36 +500,29 @@ function Product() {
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                     ) : (
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {isInCart ? (
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         ) : (
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6.5M17 13l1.5 6.5M9 21h6M12 18v3" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6.5M17 13l1.5 6.5M9 21h6M12 18v3" />
                         )}
                       </svg>
                     )}
-                    {!cartLoading && (
-                      <span className="text-[9px] font-bold mt-1 leading-none">
-                        {isInCart ? 'Remove From Cart' : 'add To Cart'}
-                      </span>
-                    )}
+                    <span className="text-[9px] font-bold mt-1 leading-none tracking-wider">
+                      {isInCart ? 'REMOVE' : 'ADD TO CART'}
+                    </span>
                   </button>
 
                   {/* Like Button */}
                   <button
                     onClick={handleLikeToggle}
-                    className={`flex-shrink-0 p-3 rounded-full flex flex-col items-center justify-center transition-all shadow-sm border ${isLiked
-                      ? 'bg-red-50 border-red-100 text-red-500'
-                      : 'bg-white border-gray-200 text-gray-400 hover:text-red-500 hover:bg-gray-50'
+                    className={`flex-shrink-0 p-3 flex flex-col items-center justify-center transition-all border ${isLiked
+                        ? 'bg-red-500/20 border-red-500/50 text-red-400'
+                        : 'bg-white/5 border-white/10 text-black/50 hover:text-red-400 hover:border-red-500/30'
                       }`}
                   >
                     <svg
-                      className={`w-5 h-5 transition-transform duration-200 active:scale-75 ${isLiked ? 'fill-current' : 'fill-none stroke-current stroke-2'}`}
+                      className={`w-5 h-5 transition-transform duration-200 ${isLiked ? 'fill-current' : 'fill-none stroke-current stroke-[1.5]'}`}
                       viewBox="0 0 20 20"
                     >
                       {isLiked ? (
@@ -612,54 +538,57 @@ function Product() {
                 </div>
               </div>
 
+              {/* Reviews Summary */}
               {!loadingReviews && reviewStats.totalReviews > 0 && (
                 <div className="flex items-center gap-2 mb-4">
                   {renderStars(reviewStats.averageRating)}
-                  <a href="#reviews" className="text-sm font-medium text-emerald-600 hover:underline">
-                    {reviewStats.totalReviews} Review{reviewStats.totalReviews !== 1 && 's'}
+                  <a href="#reviews" className="text-xs font-mono text-cyan-400 hover:underline tracking-wider">
+                    {reviewStats.totalReviews} REVIEW{reviewStats.totalReviews !== 1 && 'S'}
                   </a>
                 </div>
               )}
 
+              {/* Price */}
               <div className="mb-6 flex flex-col gap-1 mt-2">
                 {discount && discount > 0 ? (
                   <>
                     <div className="flex items-center gap-3">
-                      <span className="text-lg text-gray-400 line-through font-medium">
+                      <span className="text-lg text-white/40 line-through font-medium">
                         ₹{originalPrice}
                       </span>
-                      <span className="bg-red-50 text-red-600 text-sm font-bold px-2 py-1 rounded-md uppercase tracking-wider">
+                      <span className="bg-cyan-500/20 text-cyan-400 text-sm font-bold px-2 py-1 uppercase tracking-wider">
                         {discount}% OFF
                       </span>
                     </div>
                     <div className="flex items-end gap-2">
-                      <span className="text-4xl font-black text-gray-900">₹{price}</span>
+                      <span className="text-4xl font-black text-white">₹{price}</span>
                     </div>
                   </>
                 ) : (
                   <div className="flex items-end gap-2">
-                    <span className="text-4xl font-black text-gray-900">₹{price}</span>
+                    <span className="text-4xl font-black text-white">₹{price}</span>
                   </div>
                 )}
-                <p className="text-xs text-gray-400 mt-1">Inclusive of all taxes</p>
+                <p className="text-xs font-mono text-white/40 mt-1">Inclusive of all taxes</p>
               </div>
 
-              <div className="h-px bg-gray-200 w-full mb-6"></div>
+              <div className="h-px bg-white/10 w-full mb-6"></div>
 
+              {/* Sizes */}
               {sizes && sizes.length > 0 && (
                 <div className="mb-6">
                   <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Select Size</h3>
+                    <h3 className="text-xs font-bold text-white/60 uppercase tracking-wide">Select Size</h3>
                   </div>
                   <div className="flex flex-wrap gap-3">
                     {sizes.map((size, idx) => (
                       <button
                         key={idx}
                         onClick={() => setSelectedSize(size)}
-                        className={`w-14 h-14 flex items-center justify-center rounded-xl border-2 text-sm font-bold transition-all
+                        className={`w-14 h-14 flex items-center justify-center border text-sm font-bold transition-all uppercase
                           ${selectedSize === size
-                            ? 'border-emerald-600 bg-emerald-600 text-blue-600 shadow-md shadow-emerald-200'
-                            : 'border-gray-200 text-gray-700 hover:border-gray-400 bg-white'
+                            ? 'border-cyan-400 bg-cyan-500/20 text-cyan-400'
+                            : 'border-black/20 text-black/60 hover:border-black/40 hover:text-black'
                           }`}
                       >
                         {size}
@@ -669,18 +598,19 @@ function Product() {
                 </div>
               )}
 
+              {/* Colors */}
               {colors && colors.length > 0 && (
                 <div className="mb-8">
-                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Select Color</h3>
+                  <h3 className="text-xs font-bold text-white/60 uppercase tracking-wide mb-3">Select Color</h3>
                   <div className="flex flex-wrap gap-3">
                     {colors.map((color, idx) => (
                       <button
                         key={idx}
                         onClick={() => setSelectedColor(color)}
-                        className={`px-5 py-2.5 rounded-full border-2 text-sm font-bold capitalize transition-all
+                        className={`px-5 py-2.5 border text-sm font-bold capitalize transition-all
                           ${selectedColor === color
-                            ? 'border-gray-900 bg-gray-900 text-green-600'
-                            : 'border-gray-200 text-gray-600 hover:border-gray-400 bg-white'
+                            ? 'border-cyan-400 bg-cyan-500/20 text-cyan-400'
+                            : 'border-black/20 text-black/60 hover:border-black/40 hover:text-black'
                           }`}
                       >
                         {color}
@@ -690,73 +620,73 @@ function Product() {
                 </div>
               )}
 
+              {/* Description */}
               <div className="mb-8">
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Product Details</h3>
-                <p className="text-gray-600 text-base leading-relaxed">
+                <h3 className="text-xs font-bold text-white/60 uppercase tracking-wide mb-3">Product Details</h3>
+                <p className="text-gray-400 text-sm leading-relaxed font-mono">
                   {description}
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-8 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+              {/* Quantity & Subtotal */}
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-8 bg-white/5 p-4 border border-white/10">
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Quantity</label>
-                  <div className="flex items-center bg-white rounded-xl border border-gray-200 w-fit shadow-sm">
+                  <label className="block text-[10px] font-bold text-white/40 mb-2 uppercase tracking-wide">Quantity</label>
+                  <div className="flex items-center border border-white/20 w-fit">
                     <button
                       onClick={() => handleQuantityChange(-1)}
-                      className="p-3 text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-30"
+                      className="p-3 text-black/40 hover:text-cyan-400 transition-colors disabled:opacity-30"
                       disabled={quantity <= 1 || loading || loadingCod}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4"></path>
                       </svg>
                     </button>
-
                     <button
                       onClick={() => handleQuantityChange(1)}
-                      className="p-3 text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-30"
+                      className="p-3 text-black/40 hover:text-cyan-400 transition-colors disabled:opacity-30"
                       disabled={quantity >= 10 || loading || loadingCod}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
                       </svg>
                     </button>
-                    <span className="w-10 text-center font-bold text-gray-900 text-lg select-none">{quantity}</span>
+                    <span className="w-12 text-center font-bold text-white text-lg select-none">{quantity}</span>
                   </div>
                 </div>
-
                 <div className="text-left sm:text-right">
-                  <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wide">Subtotal</p>
-                  <p className="text-2xl font-black text-gray-900">₹{price * quantity}</p>
+                  <p className="text-[10px] font-bold text-white/40 mb-1 uppercase tracking-wide">Subtotal</p>
+                  <p className="text-2xl font-black text-white">₹{price * quantity}</p>
                 </div>
               </div>
 
+              {/* Action Buttons */}
               <div className="flex flex-col gap-3 mt-auto">
-
                 <motion.button
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleOnlinePayment}
                   disabled={loading || loadingCod}
-                  className={`w-full py-4 rounded-xl text-base font-bold shadow-sm border transition-all flex justify-center items-center gap-2
-    ${loading || loadingCod
-                      ? 'bg-blue-300 border-blue-300 text-emerald-600 cursor-not-allowed'
-                      : 'bg-blue-600 border-blue-600 text-emerald-600 hover:bg-blue-700'
+                  className={`w-full py-4 text-base font-bold tracking-wider uppercase transition-all flex justify-center items-center gap-2
+                    ${loading || loadingCod
+                      ? 'bg-white/10 text-white/40 cursor-not-allowed'
+                      : 'bg-white text-black hover:bg-cyan-400 hover:text-black'
                     }`}
                 >
                   {loading ? (
                     <>
-                      <svg className="animate-spin h-5 w-5 text-blue-950" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      <span>Initializing Payment...</span>
+                      <span>Processing...</span>
                     </>
                   ) : (
                     <>
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
                       </svg>
-                      <span >Pay Online Now</span>
+                      <span className=' text-green-400 font-bold'>Pay Online</span>
                     </>
                   )}
                 </motion.button>
@@ -766,27 +696,27 @@ function Product() {
                   whileTap={{ scale: 0.98 }}
                   onClick={openConfirmation}
                   disabled={loading || loadingCod}
-                  className={`w-full py-4 px-6 rounded-xl text-base font-bold shadow-lg transition-all 
+                  className={`w-full py-4 text-base font-bold tracking-wider uppercase transition-all 
                     ${loading || loadingCod
-                      ? 'bg-emerald-400 cursor-not-allowed text-blue-900 shadow-none'
-                      : 'bg-emerald-600 text-blue-950 hover:bg-emerald-700 hover:shadow-emerald-200'
+                      ? 'bg-cyan-500/20 text-cyan-400/50 cursor-not-allowed'
+                      : 'bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 border border-cyan-500/30'
                     }`}
                 >
                   {loadingCod || loading ? (
                     <div className="flex items-center justify-center space-x-2">
-                      <svg className="animate-spin h-5 w-5 text-blue-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      <span className=' text-amber-900'>Oder Processing...</span>
+                      <span>Processing...</span>
                     </div>
                   ) : (
-                    <span className='text-blue-600'>Place Order (Cash on Delivery)</span>
+                    <span>Cash on Delivery</span>
                   )}
                 </motion.button>
 
                 <button
-                  className="w-full py-4 rounded-xl text-base font-bold transition-all bg-green-400 text-blue-950 border border-gray-200 flex justify-center items-center gap-2"
+                  className="w-full py-4 text-base font-bold tracking-wider uppercase transition-all bg-white/5 border border-white/20 text-black/70 hover:border-cyan-400 hover:text-cyan-400 flex justify-center items-center gap-2"
                   onClick={() => {
                     const phone = "7501294656";
                     const message = `i like the product ${title}. the price mention ${price}, have discount ${discount}, product quality ${description}. i want to talk with you about the product.`;
@@ -794,54 +724,54 @@ function Product() {
                     window.location.href = url;
                   }}
                 >
-                  Direct whatsapp message to supplier
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12c0 1.97.53 3.85 1.47 5.47L2 22l4.53-1.47A9.94 9.94 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.49 0-2.88-.4-4.07-1.09l-.29-.17-2.69.87.86-2.65-.18-.3A7.95 7.95 0 014 12c0-4.41 3.59-8 8-8s8 3.59 8 8-3.59 8-8 8z"/>
+                    <path d="M16.5 13.5c-.5-.2-1.2-.6-1.5-.8-.3-.2-.6-.2-.8.2-.2.4-.8 1-.9 1.2-.1.2-.3.2-.6 0-.9-.4-1.6-1-2.1-1.7-.2-.3-.2-.5 0-.7.2-.2.3-.4.5-.6.2-.2.3-.4.3-.7 0-.3-.2-.7-.4-1-.4-.5-.8-1.1-1.4-1.5-.3-.2-.6-.3-.9-.2-.3 0-.7.3-.9.6-.4.5-.6 1.1-.6 1.7 0 .6.1 1.2.4 1.8.3.6.8 1.2 1.3 1.7 1.2 1.1 2.7 1.8 4.3 2.2.5.1 1 .2 1.5.2.6 0 1.2-.1 1.7-.4.4-.2.7-.6.9-1 .2-.4.2-.8.1-1.2-.1-.1-.3-.2-.6-.3z"/>
+                  </svg>
+                  WhatsApp Supplier
                 </button>
               </div>
-
             </div>
           </div>
 
-          {/* --- Customer Reviews Section --- */}
-          <div id="reviews" className="mt-16 border-t border-gray-200 pt-10 pb-10">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">Customer Reviews</h2>
+          {/* Reviews Section */}
+          <div id="reviews" className="mt-20 border-t border-white/10 pt-12 pb-10">
+            <h2 className="text-2xl font-black uppercase tracking-tighter text-white mb-8">Customer Reviews</h2>
 
             {loadingReviews ? (
               <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
               </div>
             ) : reviews.length === 0 ? (
-              <div className="bg-gray-50 rounded-2xl p-8 text-center">
-                <p className="text-gray-500 font-medium">No reviews yet for this product.</p>
-                <p className="text-sm text-gray-400 mt-1">Be the first to order and review it!</p>
+              <div className="bg-white/5 p-8 text-center border border-white/10">
+                <p className="text-gray-400 font-mono">No reviews yet for this product.</p>
+                <p className="text-xs text-white/40 mt-1 font-mono">Be the first to order and review it!</p>
               </div>
             ) : (
               <div className="space-y-6">
                 {reviews.map((review, idx) => (
-                  <div key={idx} className="bg-gray-50 p-6 rounded-2xl border border-gray-100 flex flex-col gap-3">
+                  <div key={idx} className="bg-white/5 p-6 border border-white/10 flex flex-col gap-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className="font-bold text-gray-900 capitalize">{review.userName || 'Anonymous User'}</span>
+                        <span className="font-bold text-white uppercase text-sm tracking-wider">{review.userName || 'Anonymous User'}</span>
                         <div className="mt-1">{renderStars(review.rating)}</div>
                       </div>
                       {review.createdAt && (
-                        <span className="text-xs text-gray-400 font-medium">
+                        <span className="text-[10px] text-white/40 font-mono">
                           {new Date(review.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                         </span>
                       )}
                     </div>
-
-                    <p className="text-gray-600 text-sm mt-1 leading-relaxed">
+                    <p className="text-gray-400 text-sm mt-1 leading-relaxed font-mono">
                       {review.comment}
                     </p>
-
                     {review.reviewImages && review.reviewImages.length > 0 && (
-                      <div className="flex gap-2 mt-3 overflow-x-auto pb-2 scrollbar-hide">
+                      <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
                         {review.reviewImages.map((img, imgIdx) => (
                           <div
                             key={imgIdx}
                             onClick={() => setSelectedImage(img)}
-                            className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden border border-gray-200 bg-white cursor-pointer hover:opacity-80 transition-opacity"
-                            title="Click to expand"
+                            className="w-20 h-20 flex-shrink-0 border border-white/20 bg-black cursor-pointer hover:opacity-80 transition-opacity"
                           >
                             <img src={img} alt="Review attachment" className="w-full h-full object-cover" />
                           </div>
@@ -853,7 +783,6 @@ function Product() {
               </div>
             )}
           </div>
-
         </motion.div>
       </div>
       <Footer />

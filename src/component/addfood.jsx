@@ -32,7 +32,7 @@ const AddFoodPage = () => {
   const [loading, setLoading] = useState(false);
   const [useradminpassword, setUseradminpassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const adminpassword = '55555@arnab';
+  const adminpassword = '@SagotoSb12';
 
   const categories = ['Men', 'Women', 'Kids', 'Unisex'];
   const types = ['T-Shirts', 'Shirts', 'Jeans', 'Trousers', 'Dresses', 'Jackets', 'Accessories'];
@@ -63,8 +63,8 @@ const AddFoodPage = () => {
     // Combine existing files with the newly selected files
     const combinedFiles = [...imageFiles, ...newFiles];
     
-    if (combinedFiles.length > 5) {
-      toast.error('You can only upload a maximum of 5 images');
+    if (combinedFiles.length > 20) {
+      toast.error('You can only upload a maximum of 20 images');
       return;
     }
 
@@ -187,7 +187,7 @@ const AddFoodPage = () => {
                 
                 {/* 5. Multiple Image Upload & Preview Grid */}
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Images ({imageFiles.length}/5)</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Images ({imageFiles.length}/20)</label>
                   <div className="relative group">
                     <input 
                       type="file" 
@@ -196,7 +196,7 @@ const AddFoodPage = () => {
                       onChange={handleFileChange}
                       className="hidden" 
                       id="image-upload"
-                      disabled={imageFiles.length >= 5}
+                      disabled={imageFiles.length >= 20}
                     />
                     
                     {previews.length > 0 ? (
@@ -219,7 +219,7 @@ const AddFoodPage = () => {
                           ))}
                           
                           {/* Add more images button (shows if under 5 limit) */}
-                          {imageFiles.length < 5 && (
+                          {imageFiles.length < 20 && (
                             <label htmlFor="image-upload" className="aspect-[3/4] flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 hover:border-emerald-400 hover:bg-emerald-50 cursor-pointer transition-all">
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

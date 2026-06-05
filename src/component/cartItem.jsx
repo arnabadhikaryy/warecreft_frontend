@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -48,9 +47,7 @@ function Cart() {
     try {
       const response = await axios.post(
         `${backend_Url}/user/get/cart`,
-        {
-            token: userToken
-        },
+        { token: userToken },
         {
           headers: {
             'Content-Type': 'application/json',
@@ -74,9 +71,7 @@ function Cart() {
     try {
       const response = await axios.post(
         `${backend_Url}/user/remove/cart`,
-        { productId: productId,
-            token: userToken
-         },
+        { productId: productId, token: userToken },
         {
           headers: {
             'Content-Type': 'application/json',
@@ -86,7 +81,6 @@ function Cart() {
 
       if (response.data.message.includes("successfully")) {
         toast.success("Item removed from cart");
-        // Remove the item from state
         setCartItems(prevItems => prevItems.filter(item => item._id !== cartItemId));
       } else {
         toast.error(response.data.message || "Failed to remove item");
@@ -141,7 +135,6 @@ function Cart() {
   };
 
   const handleBuyAll = () => {
-    // Navigate to checkout page with all items
     navigate('/checkout', {
       state: {
         items: cartItems,
@@ -152,10 +145,10 @@ function Cart() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-black">
         <Navbar />
         <div className="flex justify-center items-center h-[60vh]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+          <div className="w-12 h-12 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
         </div>
         <Footer />
       </div>
@@ -163,187 +156,215 @@ function Cart() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="h-full w-screen bg-black text-white">
       <Navbar />
-      <Toaster position="top-right" />
+      <Toaster position="top-right" toastOptions={{
+        style: { background: '#1a1a1a', color: '#fff', border: '1px solid #333' }
+      }} />
       
-      <div className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Your Shopping Cart</h1>
+      <div className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pt-24">
+        {/* Header */}
+        <div className="mb-10">
+          <h1 className="text-4xl lg:text-5xl font-black uppercase tracking-tighter text-cyan-400 mb-2">
+            SHOPPING CART
+          </h1>
+          <div className="h-px w-20 bg-cyan-400"></div>
+        </div>
         
         {cartItems.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-            <svg className="w-24 h-24 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6.5M17 13l1.5 6.5M9 21h6M12 18v3" />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="border border-white/10 bg-white/5 p-12 text-center"
+          >
+            <svg className="w-24 h-24 mx-auto text-white/20 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6.5M17 13l1.5 6.5M9 21h6M12 18v3" />
             </svg>
-            <h2 className="text-2xl font-semibold text-gray-600 mb-2">Your cart is empty</h2>
-            <p className="text-gray-500 mb-6">Looks like you haven't added any items to your cart yet.</p>
+            <h2 className="text-2xl font-bold uppercase tracking-tighter text-white/60 mb-2">YOUR CART IS EMPTY</h2>
+            <p className="text-white/40 font-mono text-sm mb-8">Looks like you haven't added any items to your cart yet.</p>
             <button
               onClick={() => navigate('/')}
-              className="inline-flex items-center px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
+              className="inline-flex items-center px-8 py-3 border border-cyan-400 text-cyan-400 text-sm font-bold tracking-wider uppercase hover:bg-cyan-400 hover:text-black transition-all duration-300"
             >
               Continue Shopping
             </button>
-          </div>
+          </motion.div>
         ) : (
           <div className="lg:grid lg:grid-cols-3 lg:gap-8">
-            {/* Cart Items - Left Column */}
+            {/* Cart Items */}
             <div className="lg:col-span-2 space-y-4">
-              {cartItems.map((item) => {
-                const finalPrice = calculateFinalPrice(item.product.price, item.product.discount);
-                const hasDiscount = item.product.discount && item.product.discount > 0;
-                const firstImage = item.product.images?.[0] || 'https://via.placeholder.com/200x200?text=No+Image';
-                
-                return (
-                  <motion.div
-                    key={item._id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      {/* Product Image */}
-                      <div className="sm:w-32 sm:h-32 flex-shrink-0">
-                        <img
-                          src={firstImage}
-                          alt={item.product.title}
-                          className="w-full h-full object-cover rounded-xl"
-                        />
-                      </div>
-                      
-                      {/* Product Details */}
-                      <div className="flex-grow">
-                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
-                          <div>
-                            <h3 className="text-lg font-bold text-gray-900 mb-1">
-                              {item.product.title}
-                            </h3>
-                            {item.product.brand && (
-                              <p className="text-sm text-gray-500 mb-2">{item.product.brand}</p>
-                            )}
-                            <div className="flex items-center gap-2 mb-2">
-                              {hasDiscount ? (
-                                <>
-                                  <span className="text-2xl font-bold text-emerald-600">
-                                    ₹{finalPrice}
-                                  </span>
-                                  <span className="text-sm text-gray-400 line-through">
-                                    ₹{item.product.price}
-                                  </span>
-                                  <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded">
-                                    {item.product.discount}% OFF
-                                  </span>
-                                </>
-                              ) : (
-                                <span className="text-2xl font-bold text-gray-900">
-                                  ₹{item.product.price}
-                                </span>
-                              )}
+              <div className="hidden lg:grid lg:grid-cols-12 gap-4 pb-4 border-b border-white/10 mb-4 text-xs font-mono font-bold text-white/40 uppercase tracking-wider">
+                <div className="col-span-6">PRODUCT</div>
+                <div className="col-span-2 text-center">PRICE</div>
+                <div className="col-span-2 text-center">DISCOUNT</div>
+                <div className="col-span-2 text-right">ACTION</div>
+              </div>
+              
+              <AnimatePresence>
+                {cartItems.map((item) => {
+                  const finalPrice = calculateFinalPrice(item.product.price, item.product.discount);
+                  const hasDiscount = item.product.discount && item.product.discount > 0;
+                  const firstImage = item.product.images?.[0] || 'https://placehold.co/200x200?text=URBAN+DROP';
+                  
+                  return (
+                    <motion.div
+                      key={item._id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="border border-white/10 bg-white/5 hover:bg-white/10 transition-all duration-300"
+                    >
+                      <div className="p-4 lg:p-6">
+                        <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6">
+                          {/* Product Image */}
+                          <div className="lg:col-span-2">
+                            <div className="aspect-square w-24 lg:w-full bg-black overflow-hidden border border-white/10">
+                              <img
+                                src={firstImage}
+                                alt={item.product.title}
+                                className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
+                              />
                             </div>
                           </div>
                           
-                          {/* Action Buttons */}
-                          <div className="flex gap-2">
+                          {/* Product Details */}
+                          <div className="flex-grow lg:col-span-4">
+                            <h3 className="text-base lg:text-lg font-bold uppercase tracking-tighter text-white mb-1">
+                              {item.product.title}
+                            </h3>
+                            {item.product.brand && (
+                              <p className="text-xs font-mono text-cyan-400 mb-2 tracking-wider">
+                                {item.product.brand.toUpperCase()}
+                              </p>
+                            )}
+                            {(item.product.sizes?.length > 0 || item.product.colors?.length > 0) && (
+                              <div className="flex flex-wrap gap-3 text-[10px] font-mono text-white/40 mt-2">
+                                {item.product.sizes?.length > 0 && (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-white/60">SIZE:</span>
+                                    <span>{item.product.sizes.join(', ')}</span>
+                                  </div>
+                                )}
+                                {item.product.colors?.length > 0 && (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-white/60">COLOR:</span>
+                                    <span>{item.product.colors.join(', ')}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Price */}
+                          <div className="lg:col-span-2 text-left lg:text-center">
+                            {hasDiscount ? (
+                              <div>
+                                <span className="text-lg font-bold text-cyan-400">
+                                  ₹{finalPrice}
+                                </span>
+                                <span className="text-xs text-white/40 line-through block">
+                                  ₹{item.product.price}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-lg font-bold text-white">
+                                ₹{item.product.price}
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Discount */}
+                          <div className="lg:col-span-2 text-left lg:text-center">
+                            {hasDiscount ? (
+                              <span className="inline-block px-2 py-1 bg-cyan-500/20 text-cyan-400 text-xs font-bold tracking-wider">
+                                -{item.product.discount}%
+                              </span>
+                            ) : (
+                              <span className="text-white/20 text-xs">—</span>
+                            )}
+                          </div>
+                          
+                          {/* Actions */}
+                          <div className="lg:col-span-2 flex flex-row lg:flex-col gap-2 justify-end lg:justify-center">
                             <button
                               onClick={() => handleBuyNow(item)}
-                              className="px-4 py-2 bg-emerald-600 text-blue-800 rounded-lg font-semibold text-sm hover:bg-emerald-700 transition-colors"
+                              className="px-3 lg:px-4 py-1.5 lg:py-2 border border-white/20 text-black/80 text-xs font-bold tracking-wider uppercase hover:border-cyan-400 hover:text-cyan-400 transition-all duration-300"
                             >
-                              Buy Item
+                              Buy
                             </button>
                             <button
                               onClick={() => handleRemoveItem(item.product._id, item._id)}
                               disabled={removingItemId === item._id}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                              className="px-3 lg:px-4 py-1.5 lg:py-2 border border-red-500/30 text-red-400 text-xs font-bold tracking-wider uppercase hover:bg-red-500/10 transition-all duration-300 disabled:opacity-50"
                             >
                               {removingItemId === item._id ? (
-                                <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
+                                <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
                               ) : (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
+                                'Remove'
                               )}
                             </button>
                           </div>
                         </div>
-                        
-                        {/* Product Specs */}
-                        {(item.product.sizes?.length > 0 || item.product.colors?.length > 0) && (
-                          <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap gap-3 text-xs text-gray-600">
-                            {item.product.sizes?.length > 0 && (
-                              <div>
-                                <span className="font-semibold">Sizes:</span>{' '}
-                                {item.product.sizes.join(', ')}
-                              </div>
-                            )}
-                            {item.product.colors?.length > 0 && (
-                              <div>
-                                <span className="font-semibold">Colors:</span>{' '}
-                                {item.product.colors.join(', ')}
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
             </div>
             
-            {/* Order Summary - Right Column */}
-            <div className="lg:col-span-1 mt-6 lg:mt-0">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-24">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Order Summary</h2>
+            {/* Order Summary */}
+            <div className="lg:col-span-1 mt-8 lg:mt-0">
+              <div className="sticky top-24 border border-white/10 bg-white/5 p-6">
+                <h2 className="text-xl font-bold uppercase tracking-tighter text-white mb-6">
+                  ORDER SUMMARY
+                </h2>
                 
-                <div className="space-y-3 pb-4 border-b border-gray-200">
-                  <div className="flex justify-between text-gray-600">
+                <div className="space-y-3 pb-4 border-b border-white/10">
+                  <div className="flex justify-between text-sm font-mono text-white/60">
                     <span>Subtotal ({cartItems.length} items)</span>
                     <span>₹{getOriginalTotalPrice()}</span>
                   </div>
                   
                   {getTotalDiscount() > 0 && (
-                    <div className="flex justify-between text-emerald-600">
+                    <div className="flex justify-between text-sm font-mono text-cyan-400">
                       <span>Discount</span>
                       <span>-₹{getTotalDiscount()}</span>
                     </div>
                   )}
                   
-                  <div className="flex justify-between text-gray-600">
+                  <div className="flex justify-between text-sm font-mono text-white/60">
                     <span>Shipping</span>
-                    <span className="text-emerald-600">Free</span>
+                    <span className="text-cyan-400">FREE</span>
                   </div>
                 </div>
                 
-                <div className="flex justify-between items-center pt-4 pb-6 border-b border-gray-200">
-                  <span className="text-lg font-bold text-gray-900">Total Amount</span>
-                  <span className="text-2xl font-bold text-emerald-600">₹{getTotalPrice()}</span>
+                <div className="flex justify-between items-center pt-4 pb-6 border-b border-white/10">
+                  <span className="text-base font-bold uppercase tracking-wider text-white">Total</span>
+                  <span className="text-2xl font-black text-cyan-400">₹{getTotalPrice()}</span>
                 </div>
                 
                 <div className="mt-6 space-y-3">
-                  {/* <button
+                  <button
                     onClick={handleBuyAll}
-                    className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
+                    className="w-full py-3 bg-cyan-500 text-black text-sm font-bold tracking-wider uppercase hover:bg-cyan-400 transition-all duration-300"
                   >
-                    Proceed to Buy All
-                  </button> */}
+                    PROCEED TO CHECKOUT
+                  </button>
                   
                   <button
                     onClick={() => navigate('/')}
-                    className="w-full py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+                    className="w-full py-3 border border-white/20 text-black text-sm font-bold tracking-wider uppercase hover:border-b-gray-900 hover:text-blue-950 transition-all duration-300"
                   >
-                    Continue Shopping
+                    CONTINUE SHOPPING
                   </button>
                 </div>
                 
-                <div className="mt-6 pt-4 border-t border-gray-100">
-                  <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                <div className="mt-6 pt-4 border-t border-white/10">
+                  <div className="flex items-center justify-center gap-2 text-[10px] font-mono text-white/30">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
-                    <span>Secure Payment</span>
+                    <span>SECURE PAYMENT • SSL ENCRYPTED</span>
                   </div>
                 </div>
               </div>
