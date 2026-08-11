@@ -1,6 +1,6 @@
 //const backend_Url = 'http://localhost:3000';
-//const backend_Url = 'https://warcraft.onrender.com';
-const backend_Url = 'https://warcraft-production-f9a0.up.railway.app';
+const backend_Url = 'https://warcraft.onrender.com'; //slow but free
+//const backend_Url = 'https://warcraft-production-f9a0.up.railway.app'; // first but costly
 const adminphone = '7365075168';
 //const payment_mode = 'sandbox';
 const payment_mode = 'production';
